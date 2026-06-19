@@ -1,28 +1,8 @@
 # 🚀 AI Career Copilot
 
-<p align="center">
-  <img src="./assets/preview.png" alt="AI Career Copilot Banner" width="100%">
-</p>
+> Your AI-powered career companion to plan, prepare, practice, and get hired.
 
-<h3 align="center">
-Your AI-Powered Career Companion to Plan, Prepare, Practice and Get Hired
-</h3>
-
-<p align="center">
-
-AI Roadmaps • AI Coach • Mock Interviews • DSA Tracker • Job Pipeline • Daily Missions
-
-</p>
-
----
-
-## 📖 Overview
-
-AI Career Copilot is an AI-powered career preparation platform designed to help students and freshers become placement-ready.
-
-Instead of using multiple applications, users can manage their complete placement journey inside one modern dashboard.
-
-The platform combines personalized preparation, coding practice, interview preparation, and job tracking into a single experience.
+AI Career Copilot is an intelligent career preparation platform that helps students and freshers become placement-ready through AI-driven planning, interview preparation, coding practice, and job application management.
 
 ---
 
@@ -31,9 +11,9 @@ The platform combines personalized preparation, coding practice, interview prepa
 ### 🏠 Smart Dashboard
 
 * Daily missions
-* Progress score
-* Streak tracking
-* Placement readiness monitoring
+* Progress tracking
+* Consistency streaks
+* Placement readiness score
 
 ### 🗺️ AI Roadmap Planner
 
@@ -45,17 +25,17 @@ Generate personalized roadmaps based on:
 
 ### 🎤 AI Mock Interview Coach
 
-Practice interviews using AI.
+Practice interviews with AI.
 
 Features:
 
 * Role selection
-* Interview simulation
-* AI guidance
+* Interview simulations
+* AI guidance and preparation
 
 ### 💼 Job Pipeline Tracker
 
-Manage job applications.
+Track your applications efficiently.
 
 Stages:
 
@@ -70,14 +50,13 @@ Stages:
 
 Track coding progress.
 
-* Easy problems
-* Medium problems
-* Hard problems
+* Total solved questions
+* Easy, Medium, Hard tracking
 * Daily streaks
 
 ### 🤖 AI Career Coach
 
-Receive intelligent recommendations.
+Receive AI-powered recommendations.
 
 * Daily tasks
 * Career suggestions
@@ -87,33 +66,65 @@ Receive intelligent recommendations.
 
 ## 🛠️ Tech Stack
 
-| Technology | Usage                |
-| ---------- | -------------------- |
-| React      | Frontend             |
-| TypeScript | Programming Language |
-| Vite       | Build Tool           |
-| Node.js    | Backend              |
-| Gemini AI  | AI Integration       |
-| GitHub     | Version Control      |
-| Vercel     | Deployment           |
+| Category        | Technology |
+| --------------- | ---------- |
+| Frontend        | React      |
+| Language        | TypeScript |
+| Build Tool      | Vite       |
+| Backend         | Node.js    |
+| AI              | Gemini AI  |
+| Version Control | GitHub     |
+| Deployment      | Vercel     |
 
 ---
 
-## 📂 Installation
+## 📂 Project Structure
+
+```text
+CareerCopilot/
+│
+├── src/
+├── assets/
+├── package.json
+├── vite.config.ts
+└── README.md
+```
+
+## ⚙️ Installation
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/sumittiwari7503/CareerCopilot.git
+```
 
+Move into the project:
+
+```bash
 cd CareerCopilot
+```
 
+Install dependencies:
+
+```bash
 npm install
+```
 
+Run the application:
+
+```bash
 npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
 ```
 
 ---
 
-## 🎯 Future Improvements
+## 🎯 Future Enhancements
 
 * Resume ATS Analyzer
 * Voice AI Assistant
@@ -135,6 +146,5 @@ ABES Engineering College, Ghaziabad
 
 ## ⭐ Support
 
-If you like this project, please give it a star on GitHub.
+If you found this project useful, please give it a star ⭐ on GitHub.
 
-If you found this project useful, consider giving it a star on GitHub.
