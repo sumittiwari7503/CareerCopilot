@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { CareerRoadmap, ResumeAnalysis, InterviewQuestionResponse, InterviewSummary, JobCard, DailyMission } from "./types";
 import { TESTIMONIALS, FAQS, INITIAL_JOBS, INITIAL_MISSIONS, SKILL_GAP_DATA } from "./constants";
+import { getProceduralRoadmap, getProceduralResumeAnalysis, getProceduralInterviewQuestionResponse, getProceduralInterviewSummary } from "./utils/fallback";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"home" | "roadmap" | "coach" | "jobs" | "tracker" | "settings">("home");
@@ -135,6 +136,7 @@ export default function App() {
 
   const generateRoadmap = async () => {
     setGeneratingRoadmap(true);
+    let success = false;
     try {
       const res = await fetch("/api/generate-roadmap", {
         method: "POST",
@@ -144,16 +146,22 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setRoadmap(data);
+        success = true;
       }
     } catch (err) {
-      console.error(err);
-    } finally {
-      setGeneratingRoadmap(false);
+      console.error("API Error - falling back to client procedural generation:", err);
     }
+
+    if (!success) {
+      const data = getProceduralRoadmap(targetRole, duration, skillLevel);
+      setRoadmap(data);
+    }
+    setGeneratingRoadmap(false);
   };
 
   const handleCustomResumeAnalyze = async () => {
     setIsAnalyzingResume(true);
+    let success = false;
     try {
       const res = await fetch("/api/resume-analyze", {
         method: "POST",
@@ -163,18 +171,24 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setAnalysisResult(data);
+        success = true;
       }
     } catch (err) {
-      console.error(err);
-    } finally {
-      setIsAnalyzingResume(false);
+      console.error("API Error - falling back to client procedural analysis:", err);
     }
+
+    if (!success) {
+      const data = getProceduralResumeAnalysis(resumeText, user.targetRole);
+      setAnalysisResult(data);
+    }
+    setIsAnalyzingResume(false);
   };
 
   const submitInterviewAnswer = async () => {
     const cleanAnswer = userAnswer.trim();
     if (!cleanAnswer) return;
     setIsSubmittingAnswer(true);
+    let success = false;
     try {
       const res = await fetch("/api/mock-interview/question", {
         method: "POST",
@@ -200,16 +214,33 @@ export default function App() {
         });
         setCurrentQuestion(data.nextQuestion);
         setUserAnswer("");
+        success = true;
       }
     } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmittingAnswer(false);
+      console.error("API Error - falling back to client procedural response:", err);
     }
+
+    if (!success) {
+      const data = getProceduralInterviewQuestionResponse(interviewRole, currentQuestion, cleanAnswer);
+      setConversationHistory(prev => [
+        ...prev,
+        { q: currentQuestion, a: cleanAnswer, score: data.evaluation?.rating || 85 }
+      ]);
+      setLatestEvaluation({
+        rating: data.evaluation?.rating || 85,
+        confidence: data.evaluation?.confidence || "Confident",
+        pacingScore: data.evaluation?.pacingScore || 90,
+        explanation: data.explanation || "Interesting point regarding metric tracking."
+      });
+      setCurrentQuestion(data.nextQuestion);
+      setUserAnswer("");
+    }
+    setIsSubmittingAnswer(false);
   };
 
   const endInterviewSession = async () => {
     setIsListening(false);
+    let success = false;
     try {
       const res = await fetch("/api/mock-interview/question", {
         method: "POST",
@@ -223,9 +254,16 @@ export default function App() {
         const data: InterviewSummary = await res.json();
         setInterviewSummary(data);
         setShowSummary(true);
+        success = true;
       }
     } catch (err) {
-      console.error(err);
+      console.error("API Error - falling back to client procedural interview summary:", err);
+    }
+
+    if (!success) {
+      const data = getProceduralInterviewSummary(interviewRole);
+      setInterviewSummary(data);
+      setShowSummary(true);
     }
   };
 
