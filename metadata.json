@@ -1,0 +1,6 @@
+{
+  "name": "CareerCopilot",
+  "description": "AI-Powered Career Companion: personalized roadmaps, resume analysis, tracking benchmarks, and interactive interview coaching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
