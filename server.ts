@@ -32,7 +32,8 @@ app.use(cors({
     const isAllowed = allowedOrigins.includes(origin) || 
                       /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
                       /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
-                      /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin);
+                      /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
+                      /\.vercel\.app$/.test(origin);
     if (isAllowed) {
       callback(null, true);
     } else {
