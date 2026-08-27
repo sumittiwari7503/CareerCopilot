@@ -11,7 +11,13 @@ export interface AuthenticatedRequest extends Request {
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized: Missing or malformed authentication header" });
+    return res.status(401).json({ 
+      error: "Unauthorized: Missing or malformed authentication header",
+      diagnostics: {
+        hasAuthHeader: !!authHeader,
+        headerType: authHeader ? authHeader.split(" ")[0] : null
+      }
+    });
   }
 
   const token = authHeader.split(" ")[1];
@@ -38,7 +44,31 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
     };
     next();
   } catch (err: any) {
-    console.error("Supabase JWT verification failed. Error name:", err.name, "Error message:", err.message);
-    return res.status(401).json({ error: `Unauthorized: Invalid or expired token: ${err.message}` });
+    let decodedClaims: any = null;
+    try {
+      decodedClaims = jwt.decode(token);
+    } catch (decodeErr) {
+      // ignore
+    }
+
+    const diagnostics = {
+      errorName: err.name,
+      errorMessage: err.message,
+      tokenLength: token ? token.length : 0,
+      secretLength: jwtSecret ? jwtSecret.length : 0,
+      decodedClaims: decodedClaims ? {
+        iss: decodedClaims.iss,
+        aud: decodedClaims.aud,
+        sub: decodedClaims.sub,
+        exp: decodedClaims.exp,
+        email: decodedClaims.email
+      } : null
+    };
+
+    console.error("Supabase JWT verification failed. Diagnostics:", JSON.stringify(diagnostics));
+    return res.status(401).json({ 
+      error: `Unauthorized: Invalid or expired token: ${err.message}`,
+      diagnostics
+    });
   }
 }
