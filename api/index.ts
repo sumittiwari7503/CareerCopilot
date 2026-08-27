@@ -45,9 +45,15 @@ app.get("/api/run-migrations", async (req, res) => {
 
     let stdout = "";
     if (schemaExists) {
-      stdout = execSync("npx prisma migrate deploy", {
+      stdout = execSync("node ./node_modules/prisma/build/index.js migrate deploy", {
         cwd,
-        env: { ...process.env, PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: "1" }
+        env: { 
+          ...process.env, 
+          HOME: "/tmp",
+          PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: "1",
+          PRISMA_CLI_DISABLE_TELEMETRY: "1",
+          CHECKPOINT_DISABLE: "1"
+        }
       }).toString();
     } else {
       throw new Error(`schema.prisma not found at ${path.join(cwd, "prisma/schema.prisma")}`);
