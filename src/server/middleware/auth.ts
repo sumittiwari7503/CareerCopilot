@@ -22,14 +22,23 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
 
   try {
-    const payload = jwt.verify(token, jwtSecret) as any;
+    let payload: any;
+    try {
+      // Supabase JWT secrets are base64-encoded. We decode it to a Buffer first.
+      const decodedSecret = Buffer.from(jwtSecret, "base64");
+      payload = jwt.verify(token, decodedSecret);
+    } catch (err1) {
+      // Fallback in case secret is set as raw string
+      payload = jwt.verify(token, jwtSecret);
+    }
+
     req.user = {
       id: payload.sub,
       email: payload.email
     };
     next();
   } catch (err: any) {
-    console.warn("JWT Verification failed:", err.message);
-    return res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
+    console.error("Supabase JWT verification failed. Error name:", err.name, "Error message:", err.message);
+    return res.status(401).json({ error: `Unauthorized: Invalid or expired token: ${err.message}` });
   }
 }
