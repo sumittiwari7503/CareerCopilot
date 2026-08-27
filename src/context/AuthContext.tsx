@@ -10,6 +10,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<any>;
   getAccessToken: () => Promise<string | null>;
+  signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -195,8 +198,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return currentSession?.access_token ?? null;
   };
 
+  const signInWithGoogle = async () => {
+    setLoading(true);
+    try {
+      if (isPlaceholderSupabase) {
+        window.location.href = `${window.location.origin}/auth/callback?code=mock-oauth-code`;
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    setLoading(true);
+    try {
+      if (isPlaceholderSupabase) {
+        console.log("Mock reset password email sent to:", email);
+        return;
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      if (error) throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    setLoading(true);
+    try {
+      if (isPlaceholderSupabase) {
+        console.log("Mock password updated locally");
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, getAccessToken }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      signUp, 
+      signIn, 
+      signOut, 
+      getAccessToken, 
+      signInWithGoogle, 
+      resetPassword, 
+      updatePassword 
+    }}>
       {children}
     </AuthContext.Provider>
   );

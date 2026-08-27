@@ -15,6 +15,18 @@ router.get("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     });
 
     if (!profile) {
+      // Ensure the corresponding User record exists in Postgres (required for foreign key constraints)
+      let dbUser = await prisma.user.findUnique({ where: { id: userId } });
+      if (!dbUser) {
+        dbUser = await prisma.user.create({
+          data: {
+            id: userId,
+            email: email,
+            passwordHash: "" // Managed by Supabase Auth / Google OAuth
+          }
+        });
+      }
+
       profile = await prisma.profile.create({
         data: {
           userId,

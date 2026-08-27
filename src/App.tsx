@@ -22,11 +22,18 @@ import InterviewPage from "./pages/Interview/InterviewPage";
 import PipelinePage from "./pages/Pipeline/PipelinePage";
 import DsaPage from "./pages/DSA/DsaPage";
 import ProfilePage from "./pages/Profile/ProfilePage";
-import AuthPage from "./pages/Auth/AuthPage";
 import OnboardingPage from "./pages/Onboarding/OnboardingPage";
 
 // Auth Provider
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Routing and new pages
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./pages/Auth/LoginPage";
+import SignUpPage from "./pages/Auth/SignUpPage";
+import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/Auth/ResetPasswordPage";
+import AuthCallbackPage from "./pages/Auth/AuthCallbackPage";
 
 // Services
 import { 
@@ -546,19 +553,6 @@ function MainApp() {
   };
 
   // Auth/Session views gates
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
-        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
-        Securing connection to Aether platform...
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthPage />;
-  }
-
   if (!onboardingCompleted) {
     return <OnboardingPage onComplete={handleOnboardingComplete} loading={onboardingLoading} />;
   }
@@ -763,10 +757,66 @@ function MainApp() {
   );
 }
 
+function LoginGate() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
+        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
+        Securing connection to Aether platform...
+      </div>
+    );
+  }
+  return user ? <Navigate to="/dashboard" replace /> : <LoginPage />;
+}
+
+function SignUpGate() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
+        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
+        Securing connection to Aether platform...
+      </div>
+    );
+  }
+  return user ? <Navigate to="/dashboard" replace /> : <SignUpPage />;
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
+        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
+        Securing connection to Aether platform...
+      </div>
+    );
+  }
+
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <BrowserRouter>
+        <Routes>
+          {/* Public Auth Routes */}
+          <Route path="/login" element={<LoginGate />} />
+          <Route path="/signup" element={<SignUpGate />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+          {/* Protected Main Panel Routes */}
+          <Route path="/dashboard" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+          
+          {/* Fallback to Dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
