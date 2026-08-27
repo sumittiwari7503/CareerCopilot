@@ -4,8 +4,7 @@
   "functions": {
     "api/index.ts": {
       "includeFiles": [
-        "prisma/schema.prisma",
-        "node_modules/.prisma/client/libquery_engine-rhel-openssl-*"
+        "prisma/schema.prisma"
       ]
     }
   },
