@@ -1,6 +1,14 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": [
+        "prisma/schema.prisma",
+        "node_modules/.prisma/client/libquery_engine-rhel-openssl-*"
+      ]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
