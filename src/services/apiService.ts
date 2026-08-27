@@ -46,7 +46,16 @@ export async function updateProfileAPI(
     body: JSON.stringify(profileData)
   });
   if (!res.ok) {
-    throw new Error(`Failed to update profile: ${res.statusText}`);
+    let errMsg = res.statusText;
+    try {
+      const errData = await res.json();
+      if (errData && errData.error) {
+        errMsg = errData.error;
+      }
+    } catch (e) {
+      // ignore
+    }
+    throw new Error(`Failed to update profile: ${errMsg}`);
   }
   return res.json();
 }
