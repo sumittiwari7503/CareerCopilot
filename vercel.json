@@ -1,13 +1,6 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": [
-        "prisma/schema.prisma"
-      ]
-    }
-  },
   "rewrites": [
     {
       "source": "/api/:path*",
