@@ -75,9 +75,14 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     };
     next();
   } catch (err: any) {
+    let decodedHeader: any = null;
     let decodedClaims: any = null;
     try {
-      decodedClaims = jwt.decode(token);
+      const decodedComplete = jwt.decode(token, { complete: true }) as any;
+      if (decodedComplete) {
+        decodedHeader = decodedComplete.header;
+        decodedClaims = decodedComplete.payload;
+      }
     } catch (decodeErr) {
       // ignore
     }
@@ -87,6 +92,11 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       errorMessage: err.message,
       tokenLength: token ? token.length : 0,
       secretLength: jwtSecret ? jwtSecret.length : 0,
+      decodedHeader: decodedHeader ? {
+        alg: decodedHeader.alg,
+        kid: decodedHeader.kid,
+        typ: decodedHeader.typ
+      } : null,
       decodedClaims: decodedClaims ? {
         iss: decodedClaims.iss,
         aud: decodedClaims.aud,
