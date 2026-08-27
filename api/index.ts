@@ -1,5 +1,6 @@
 import { PrismaClient } from "../prisma/client/index.js";
 import serverApp from "./server.cjs";
+import * as jose from "jose";
 
 const prisma = new PrismaClient();
 const app = (serverApp as any).default || serverApp;
