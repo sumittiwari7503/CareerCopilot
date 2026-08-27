@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import * as jose from "jose";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -8,7 +9,7 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ 
@@ -22,25 +23,55 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
 
   const token = authHeader.split(" ")[1];
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
-  if (!jwtSecret) {
-    console.error("Critical Error: SUPABASE_JWT_SECRET environment variable is missing on the server");
-    return res.status(500).json({ error: "Internal server configuration error" });
-  }
 
   try {
-    let payload: any;
-    try {
-      // Supabase JWT secrets are base64-encoded. We decode it to a Buffer first.
-      const decodedSecret = Buffer.from(jwtSecret, "base64");
-      payload = jwt.verify(token, decodedSecret);
-    } catch (err1) {
-      // Fallback in case secret is set as raw string
-      payload = jwt.verify(token, jwtSecret);
+    // 1. Decode token to inspect alg and iss
+    const decoded = jwt.decode(token, { complete: true }) as any;
+    if (!decoded || !decoded.header || !decoded.payload) {
+      throw new Error("Invalid JWT format");
+    }
+
+    const alg = decoded.header.alg;
+    const iss = decoded.payload.iss;
+
+    let userId: string;
+    let email: string | undefined;
+
+    if (alg && alg.startsWith("RS")) {
+      // Asymmetric token verification (e.g. RS256 via JWKS)
+      if (!iss) {
+        throw new Error("Missing issuer (iss) claim in token payload");
+      }
+      const jwksUrl = `${iss}/.well-known/jwks.json`;
+      const JWKS = jose.createRemoteJWKSet(new URL(jwksUrl));
+      
+      const { payload } = await jose.jwtVerify(token, JWKS, {
+        audience: "authenticated"
+      });
+      
+      userId = payload.sub as string;
+      email = payload.email as string | undefined;
+    } else {
+      // Symmetric token verification (fallback to HS256)
+      if (!jwtSecret) {
+        throw new Error("SUPABASE_JWT_SECRET environment variable is missing on the server");
+      }
+
+      let payload: any;
+      try {
+        const decodedSecret = Buffer.from(jwtSecret, "base64");
+        payload = jwt.verify(token, decodedSecret);
+      } catch (err1) {
+        payload = jwt.verify(token, jwtSecret);
+      }
+
+      userId = payload.sub;
+      email = payload.email;
     }
 
     req.user = {
-      id: payload.sub,
-      email: payload.email
+      id: userId,
+      email: email
     };
     next();
   } catch (err: any) {
