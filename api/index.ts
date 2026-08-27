@@ -1,5 +1,8 @@
-import app from "../server";
-import { prisma } from "../src/server/db/prisma";
+import { PrismaClient } from "@prisma/client";
+import serverApp from "./server.cjs";
+
+const prisma = new PrismaClient();
+const app = (serverApp as any).default || serverApp;
 
 app.get("/api/health-diagnostics", async (req, res) => {
   const envStatus = {
