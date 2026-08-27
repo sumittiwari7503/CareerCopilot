@@ -33,4 +33,41 @@ app.get("/api/health-diagnostics", async (req, res) => {
   });
 });
 
+app.get("/api/run-migrations", async (req, res) => {
+  const { execSync } = await import("child_process");
+  const fs = await import("fs");
+  const path = await import("path");
+
+  try {
+    const cwd = process.cwd();
+    const migrationsExist = fs.existsSync(path.join(cwd, "prisma/migrations"));
+    const schemaExists = fs.existsSync(path.join(cwd, "prisma/schema.prisma"));
+
+    let stdout = "";
+    if (schemaExists) {
+      stdout = execSync("npx prisma migrate deploy", {
+        cwd,
+        env: { ...process.env, PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: "1" }
+      }).toString();
+    } else {
+      throw new Error(`schema.prisma not found at ${path.join(cwd, "prisma/schema.prisma")}`);
+    }
+
+    return res.json({
+      success: true,
+      cwd,
+      migrationsExist,
+      schemaExists,
+      stdout
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      stderr: err.stderr ? err.stderr.toString() : null,
+      stdout: err.stdout ? err.stdout.toString() : null
+    });
+  }
+});
+
 export default app;
