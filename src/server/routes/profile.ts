@@ -4,52 +4,57 @@ import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
+async function ensureProfileExists(userId: string, email: string) {
+  let profile = await prisma.profile.findUnique({
+    where: { userId }
+  });
+
+  if (!profile) {
+    // Ensure the corresponding User record exists in Postgres (required for foreign key constraints)
+    let dbUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!dbUser) {
+      dbUser = await prisma.user.create({
+        data: {
+          id: userId,
+          email: email,
+          passwordHash: "" // Managed by Supabase Auth / Google OAuth
+        }
+      });
+    }
+
+    profile = await prisma.profile.create({
+      data: {
+        userId,
+        fullName: email.split("@")[0] || "New User",
+        targetRole: "Software Developer",
+        targetLevel: "L5",
+        streakDays: 0,
+        dailyScore: 0,
+        easySolved: 0,
+        mediumSolved: 0,
+        hardSolved: 0,
+        targetCompany: "",
+        companyType: "",
+        specialization: "",
+        experienceLevel: "",
+        targetTimeline: 3,
+        timeAvailable: "2 hours",
+        currentSkills: "[]",
+        onboardingCompleted: false
+      }
+    });
+  }
+
+  return profile;
+}
+
 // GET /api/profile - Fetches user profile, lazy-creating it if not exists.
 router.get("/profile", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   const email = req.user!.email || "";
 
   try {
-    let profile = await prisma.profile.findUnique({
-      where: { userId }
-    });
-
-    if (!profile) {
-      // Ensure the corresponding User record exists in Postgres (required for foreign key constraints)
-      let dbUser = await prisma.user.findUnique({ where: { id: userId } });
-      if (!dbUser) {
-        dbUser = await prisma.user.create({
-          data: {
-            id: userId,
-            email: email,
-            passwordHash: "" // Managed by Supabase Auth / Google OAuth
-          }
-        });
-      }
-
-      profile = await prisma.profile.create({
-        data: {
-          userId,
-          fullName: email.split("@")[0] || "New User",
-          targetRole: "Software Developer",
-          targetLevel: "L5",
-          streakDays: 0,
-          dailyScore: 0,
-          easySolved: 0,
-          mediumSolved: 0,
-          hardSolved: 0,
-          targetCompany: "",
-          companyType: "",
-          specialization: "",
-          experienceLevel: "",
-          targetTimeline: 3,
-          timeAvailable: "2 hours",
-          currentSkills: "[]",
-          onboardingCompleted: false
-        }
-      });
-    }
-
+    const profile = await ensureProfileExists(userId, email);
     return res.json(profile);
   } catch (err: any) {
     console.error("Error fetching/creating profile:", err);
@@ -60,6 +65,7 @@ router.get("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
 // PUT /api/profile - Updates user profile details
 router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  const email = req.user!.email || "";
   const { 
     fullName, 
     targetRole, 
@@ -79,6 +85,24 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
   }
 
   try {
+    // Ensure both User and Profile exist before attempting update (crucial for new OAuth registrations)
+    await ensureProfileExists(userId, email);
+
+    // If currentSkills is stringified JSON, parse it to pass as a JSON object to Prisma
+    let parsedSkills = currentSkills;
+    if (currentSkills !== undefined && typeof currentSkills === "string") {
+      try {
+        parsedSkills = JSON.parse(currentSkills);
+      } catch (e) {
+        parsedSkills = currentSkills;
+      }
+    }
+
+    // Timeline parsing check
+    const parsedTimeline = targetTimeline !== undefined 
+      ? (typeof targetTimeline === "number" ? targetTimeline : (parseInt(targetTimeline, 10) || 3))
+      : undefined;
+
     const updated = await prisma.profile.update({
       where: { userId },
       data: {
@@ -89,9 +113,9 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
         ...(companyType !== undefined && { companyType }),
         ...(specialization !== undefined && { specialization }),
         ...(experienceLevel !== undefined && { experienceLevel }),
-        ...(targetTimeline !== undefined && { targetTimeline: parseInt(targetTimeline, 10) || 3 }),
+        ...(parsedTimeline !== undefined && { targetTimeline: parsedTimeline }),
         ...(timeAvailable !== undefined && { timeAvailable }),
-        ...(currentSkills !== undefined && { currentSkills }),
+        ...(currentSkills !== undefined && { currentSkills: parsedSkills }),
         ...(onboardingCompleted !== undefined && { onboardingCompleted: !!onboardingCompleted })
       }
     });
