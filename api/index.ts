@@ -1,2 +1,33 @@
 import app from "../server";
+import { prisma } from "../src/server/db/prisma";
+
+app.get("/api/health-diagnostics", async (req, res) => {
+  const envStatus = {
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    SUPABASE_JWT_SECRET: !!process.env.SUPABASE_JWT_SECRET,
+    GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
+    VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
+    VITE_SUPABASE_ANON_KEY: !!process.env.VITE_SUPABASE_ANON_KEY
+  };
+
+  let dbConnection = "Checking...";
+  let dbError = null;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbConnection = "SUCCESS";
+  } catch (err: any) {
+    dbConnection = "FAILED";
+    dbError = err.message;
+  }
+
+  return res.json({
+    status: "OK",
+    envStatus,
+    dbConnection,
+    dbError,
+    platform: process.platform,
+    nodeVersion: process.version
+  });
+});
+
 export default app;
