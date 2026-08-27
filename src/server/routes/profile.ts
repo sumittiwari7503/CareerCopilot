@@ -58,7 +58,15 @@ router.get("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     return res.json(profile);
   } catch (err: any) {
     console.error("Error fetching/creating profile:", err);
-    return res.status(500).json({ error: "Internal server error retrieving profile context" });
+    return res.status(500).json({ 
+      error: `Internal server error retrieving profile context: ${err.message}`,
+      details: {
+        name: err.name,
+        message: err.message,
+        code: err.code,
+        meta: err.meta
+      }
+    });
   }
 });
 
@@ -79,6 +87,12 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     currentSkills,
     onboardingCompleted
   } = req.body;
+
+  console.log("PUT /api/profile incoming payload diagnostics:", {
+    userId,
+    email,
+    bodyFields: Object.keys(req.body).map(k => ({ key: k, type: typeof req.body[k] }))
+  });
 
   if (fullName !== undefined && (typeof fullName !== "string" || fullName.trim() === "")) {
     return res.status(400).json({ error: "Full name must be a valid string" });
@@ -123,7 +137,16 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     return res.json(updated);
   } catch (err: any) {
     console.error("Error updating profile:", err);
-    return res.status(500).json({ error: "Internal server error updating profile" });
+    return res.status(500).json({ 
+      error: `Internal server error updating profile: ${err.message}`,
+      details: {
+        name: err.name,
+        message: err.message,
+        code: err.code,
+        meta: err.meta,
+        stack: err.stack
+      }
+    });
   }
 });
 
