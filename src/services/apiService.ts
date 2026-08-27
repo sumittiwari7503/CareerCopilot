@@ -51,9 +51,6 @@ export async function updateProfileAPI(
       const errData = await res.json();
       if (errData && errData.error) {
         errMsg = errData.error;
-        if (errData.diagnostics) {
-          errMsg += ` (Diagnostics: ${JSON.stringify(errData.diagnostics)})`;
-        }
       }
     } catch (e) {
       // ignore
