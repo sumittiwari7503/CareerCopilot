@@ -57,8 +57,9 @@ app.use("/api/roadmap", careerPlanRouter);
 // Setup Vite or Production Static Assets Handler
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    // Hide Vite loading from Vercel static analysis bundler using dynamic eval require
-    const viteModule = (0, eval)('require("vite")');
+    // Hide Vite loading from Vercel static analysis bundler using dynamic variable path
+    const vitePath = "vite";
+    const viteModule = await import(vitePath);
     const vite = await viteModule.createServer({
       server: { middlewareMode: true },
       appType: "spa",
