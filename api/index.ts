@@ -97,8 +97,15 @@ app.get("/api/run-migrations", async (req, res) => {
       const checksum = crypto.createHash("sha256").update(sql).digest("hex");
       const migrationId = crypto.randomUUID();
 
-      // Start transaction or raw execution block
-      await prisma.$executeRawUnsafe(sql);
+      // Execute migration statements sequentially
+      const statements = sql
+        .split(";")
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      for (const statement of statements) {
+        await prisma.$executeRawUnsafe(statement);
+      }
 
       // Register migration in logs
       await prisma.$executeRawUnsafe(
