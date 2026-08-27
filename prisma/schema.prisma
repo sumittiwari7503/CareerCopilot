@@ -1,0 +1,174 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  passwordHash      String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  profile           Profile?
+  resumes           Resume[]
+  applications      Application[]
+  roadmaps          CareerRoadmap[]
+  interviewSessions InterviewSession[]
+  actionItems       ActionItem[]
+  projects          ProjectRecommendation[]
+}
+
+model Profile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName            String
+  targetRole          String?
+  targetLevel         String?  @default("L5")
+  streakDays          Int      @default(0)
+  dailyScore          Int      @default(0)
+  
+  // Solved DSA Counters
+  easySolved          Int      @default(0)
+  mediumSolved        Int      @default(0)
+  hardSolved          Int      @default(0)
+
+  // Onboarding parameters (Phase 9)
+  targetCompany       String?
+  companyType         String?  // Product Company, Service Company, Startup, Consulting, Government, Not sure
+  specialization      String?  // Frontend, Backend, Full Stack, Mobile, Systems, Not sure
+  experienceLevel     String?  // Student, Fresher, 0–1 years, 1–2 years, 2–3 years, 3+ years
+  targetTimeline      Int      @default(3) // Timeline in months (1, 2, 3, 4, 6)
+  timeAvailable       String?  @default("2 hours") // Time per day: 30 min, 1 hour, 2 hours, 3 hours, 4+ hours
+  currentSkills       Json     @default("[]") // JSON stringified array of string tags
+  onboardingCompleted Boolean  @default(false)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Resume {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String          @default("My Resume")
+  createdAt DateTime        @default(now())
+  versions  ResumeVersion[]
+}
+
+model ResumeVersion {
+  id           String          @id @default(uuid())
+  resumeId     String
+  resume       Resume          @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  fileUrl      String
+  extractedText String
+  versionNo    Int             @default(1)
+  createdAt    DateTime        @default(now())
+  analysis     ResumeAnalysis?
+}
+
+model ResumeAnalysis {
+  id                String        @id @default(uuid())
+  resumeVersionId   String        @unique
+  resumeVersion     ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  atsScore          Int
+  compatibilityText String
+  suggestions       Json          @default("[]")
+  missingKeywords   String[]      @default([])
+  createdAt         DateTime      @default(now())
+}
+
+model Application {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  company      String
+  status       String    @default("Wishlist")
+  priorityFlag Boolean   @default(false)
+  location     String?   @default("Remote")
+  appliedDate  DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model CareerRoadmap {
+  id           String             @id @default(uuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  duration     Int                @default(3)
+  skillLevel   String             @default("Beginner")
+  createdAt    DateTime           @default(now())
+  milestones   RoadmapMilestone[]
+  checkedTasks Json               @default("{}") // Store roadmap checkbox completion states
+}
+
+model RoadmapMilestone {
+  id        String        @id @default(uuid())
+  roadmapId String
+  roadmap   CareerRoadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  monthNo   Int
+  title     String
+  weeksData Json          @default("[]")
+}
+
+model InterviewSession {
+  id             String              @id @default(uuid())
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleContext    String
+  overallScore   Int?
+  readinessLevel String?
+  strengths      String[]            @default([])
+  improvements   String[]            @default([])
+  createdAt      DateTime            @default(now())
+  questions      InterviewQuestion[]
+}
+
+model InterviewQuestion {
+  id           String           @id @default(uuid())
+  sessionId    String
+  session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionText String
+  answerText   String?
+  rating       Int?
+  confidence   String?
+  feedbackText String?
+}
+
+model ActionItem {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String
+  priority         String   @default("Medium") // High / Medium / Low
+  status           String   @default("Pending") // Pending / Completed
+  source           String // E.g., "Resume", "DSA", "Interview"
+  skillGap         String?
+  estimatedMinutes Int      @default(15)
+  impactText       String?
+  tasks            Json     @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model ProjectRecommendation {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  techStack     String[] @default([])
+  difficulty    String   @default("Medium") // Beginner / Intermediate / Advanced
+  resumeValue   String
+  deliverables  String[] @default([])
+  interviewPrep String[] @default([])
+  sourceGap     String
+  status        String   @default("Recommended")
+  createdAt     DateTime @default(now())
+}

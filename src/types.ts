@@ -14,10 +14,13 @@ export interface RoadmapMonth {
 }
 
 export interface CareerRoadmap {
+  id: string;
   roadmapTitle: string;
   durationText: string;
+  duration: number;
   completionRateText: string;
   months: RoadmapMonth[];
+  checkedTasks?: Record<string, boolean>;
 }
 
 export interface ResumeSuggestion {
@@ -25,6 +28,8 @@ export interface ResumeSuggestion {
   title: string;
   description: string;
   actionText: string;
+  evidenceClass: "Existing" | "Weak" | "Missing" | "Unsupported";
+  evidenceDetail: string;
 }
 
 export interface ResumeAnalysis {
@@ -70,4 +75,32 @@ export interface DailyMission {
   description: string;
   metadata: string;
   completed: boolean;
+}
+
+export interface ActionItem {
+  id: string;
+  title: string;
+  description: string;
+  priority: "High" | "Medium" | "Low";
+  status: "Pending" | "Completed";
+  source: string;
+  skillGap?: string;
+  estimatedMinutes: number;
+  impactText: string;
+  tasks: string; // stringified JSON
+  createdAt: string;
+}
+
+export interface ProjectRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  techStack: string[];
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
+  resumeValue: string;
+  deliverables: string[];
+  interviewPrep: string[];
+  sourceGap: string;
+  status: string;
+  createdAt: string;
 }

@@ -46,8 +46,10 @@ export function getProceduralRoadmap(role: string, duration: number, skillLevel:
   }
 
   return {
+    id: generatedId,
     roadmapTitle: `${cleanRole} placement roadmap - ${skillLevel} tier`,
     durationText: `${duration} Months`,
+    duration: duration,
     completionRateText: "34% Complete",
     months: monthsList
   };
@@ -66,13 +68,17 @@ export function getProceduralResumeAnalysis(text: string, role: string): ResumeA
         type: "quantify",
         title: "Quantify Achievements",
         description: 'In "Project X", instead of describing generalized tasks like "improved performance", explain specifically: "optimized query response speeds by 40% using Redis caching tethers".',
-        actionText: "Apply Fix"
+        actionText: "Apply Fix",
+        evidenceClass: "Weak" as const,
+        evidenceDetail: "Mentions project details but lacks numerical metrics."
       },
       {
         type: "alert",
         title: "Formatting Alert",
         description: "Your multi-column layout may cause issues with some legacy applicant tracking ATS tethers. Consider moving to a single-column architecture for universal parsing safety.",
-        actionText: "Format PDF"
+        actionText: "Format PDF",
+        evidenceClass: "Weak" as const,
+        evidenceDetail: "Formatting configuration uses columns."
       }
     ]
   };
