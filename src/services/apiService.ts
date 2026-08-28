@@ -37,6 +37,8 @@ export async function updateProfileAPI(
     timeAvailable: string;
     currentSkills: string; // stringified JSON
     onboardingCompleted: boolean;
+    dailyScore: number;
+    streakDays: number;
   }>,
   token: string | null
 ) {
@@ -173,12 +175,14 @@ export async function submitInterviewAnswerAPI(
   role: string, 
   currentQuestion: string, 
   userAnswer: string, 
+  type: string,
+  difficulty: string,
   token: string | null
 ): Promise<InterviewQuestionResponse> {
   const res = await fetch("/api/mock-interview/question", {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ role, currentQuestion, userAnswer })
+    body: JSON.stringify({ role, currentQuestion, userAnswer, type, difficulty })
   });
   if (!res.ok) {
     throw new Error(`Failed to submit answer: ${res.statusText}`);
@@ -188,12 +192,14 @@ export async function submitInterviewAnswerAPI(
 
 export async function endInterviewSessionAPI(
   role: string, 
+  type: string,
+  difficulty: string,
   token: string | null
 ): Promise<InterviewSummary> {
   const res = await fetch("/api/mock-interview/question", {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ role, isEnding: true })
+    body: JSON.stringify({ role, isEnding: true, type, difficulty })
   });
   if (!res.ok) {
     throw new Error(`Failed to end session: ${res.statusText}`);

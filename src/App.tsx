@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   Compass, 
   Map, 
+  FileText,
   UserCheck, 
   TrendingUp, 
   Briefcase, 
@@ -18,6 +19,7 @@ import { INITIAL_MISSIONS } from "./constants";
 import Sidebar from "./components/layout/Sidebar";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import RoadmapPage from "./pages/Roadmap/RoadmapPage";
+import ResumePage from "./pages/Resume/ResumePage";
 import InterviewPage from "./pages/Interview/InterviewPage";
 import PipelinePage from "./pages/Pipeline/PipelinePage";
 import DsaPage from "./pages/DSA/DsaPage";
@@ -46,6 +48,7 @@ import {
   updateDsaStatsAPI,
   fetchApplicationsAPI,
   createApplicationAPI,
+  updateApplicationAPI,
   deleteApplicationAPI,
   fetchTodayActionAPI,
   completeActionAPI,
@@ -67,7 +70,7 @@ import {
 function MainApp() {
   const { user, loading: authLoading, signOut, getAccessToken } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<"home" | "roadmap" | "coach" | "jobs" | "tracker" | "settings">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "roadmap" | "resume" | "coach" | "jobs" | "tracker" | "settings">("home");
   
   // Hydrated Profile data
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -77,6 +80,8 @@ function MainApp() {
   const [easySolved, setEasySolved] = useState(0);
   const [mediumSolved, setMediumSolved] = useState(0);
   const [hardSolved, setHardSolved] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
+  const [dailyScore, setDailyScore] = useState(0);
   
   const [targetRole, setTargetRole] = useState("Software Engineer");
   const [duration, setDuration] = useState<number>(3);
@@ -120,6 +125,8 @@ function MainApp() {
   const [currentQuestion, setCurrentQuestion] = useState("Tell me about a time you optimized app performance. What were the metrics, and how did you measure success?");
   const [userAnswer, setUserAnswer] = useState("");
   const [interviewRole, setInterviewRole] = useState("Senior Frontend Engineer");
+  const [interviewType, setInterviewType] = useState("Technical");
+  const [interviewDifficulty, setInterviewDifficulty] = useState("Mid");
   const [conversationHistory, setConversationHistory] = useState<{ q: string; a: string; score?: number }[]>([]);
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [latestEvaluation, setLatestEvaluation] = useState<{ rating: number; confidence: string; pacingScore?: number; explanation?: string } | null>({
@@ -175,6 +182,8 @@ function MainApp() {
         setEasySolved(profile.easySolved);
         setMediumSolved(profile.mediumSolved);
         setHardSolved(profile.hardSolved);
+        setStreakDays(profile.streakDays || 0);
+        setDailyScore(profile.dailyScore || 0);
 
         // Hydrate onboarding specs (Phase 9)
         setTargetRole(profile.targetRole || "Software Engineer");
@@ -382,6 +391,12 @@ function MainApp() {
       const token = await getAccessToken();
       await completeActionAPI(actionId, token);
       
+      const nextScore = dailyScore + 50;
+      const nextStreak = streakDays === 0 ? 1 : streakDays + 1;
+      setDailyScore(nextScore);
+      setStreakDays(nextStreak);
+      await updateProfileAPI({ dailyScore: nextScore, streakDays: nextStreak }, token);
+      
       // Fetch a new today's action item immediately after completing
       const newAction = await fetchTodayActionAPI(token);
       setTodayAction(newAction);
@@ -429,7 +444,7 @@ function MainApp() {
     let success = false;
     try {
       const token = await getAccessToken();
-      const data = await submitInterviewAnswerAPI(interviewRole, currentQuestion, cleanAnswer, token);
+      const data = await submitInterviewAnswerAPI(interviewRole, currentQuestion, cleanAnswer, interviewType, interviewDifficulty, token);
       
       setConversationHistory(prev => [
         ...prev,
@@ -471,9 +486,16 @@ function MainApp() {
     let success = false;
     try {
       const token = await getAccessToken();
-      const data = await endInterviewSessionAPI(interviewRole, token);
+      const data = await endInterviewSessionAPI(interviewRole, interviewType, interviewDifficulty, token);
       setInterviewSummary(data);
       setShowSummary(true);
+      
+      const nextScore = dailyScore + 40;
+      const nextStreak = streakDays === 0 ? 1 : streakDays + 1;
+      setDailyScore(nextScore);
+      setStreakDays(nextStreak);
+      await updateProfileAPI({ dailyScore: nextScore, streakDays: nextStreak }, token);
+      
       success = true;
     } catch (err) {
       console.error("API Error - falling back to client procedural interview summary:", err);
@@ -528,19 +550,50 @@ function MainApp() {
     }
   };
 
+  const handleUpdateJobStatus = async (id: string, nextStatus: "Wishlist" | "Applied" | "Assessment" | "Interview" | "Offer") => {
+    try {
+      const token = await getAccessToken();
+      await updateApplicationAPI(id, { status: nextStatus }, token);
+      setJobs(prev => prev.map(job => job.id === id ? { ...job, status: nextStatus } : job));
+    } catch (err) {
+      console.error("Failed to update application status in database:", err);
+    }
+  };
+
   // Centralized DSA counters update handlers
   const handleUpdateDsaCount = async (difficulty: "easy" | "medium" | "hard", newCount: number) => {
     const e = difficulty === "easy" ? newCount : easySolved;
     const m = difficulty === "medium" ? newCount : mediumSolved;
     const h = difficulty === "hard" ? newCount : hardSolved;
 
-    if (difficulty === "easy") setEasySolved(newCount);
-    if (difficulty === "medium") setMediumSolved(newCount);
-    if (difficulty === "hard") setHardSolved(newCount);
+    let scoreGain = 0;
+    if (difficulty === "easy" && newCount > easySolved) {
+      scoreGain = (newCount - easySolved) * 10;
+      setEasySolved(newCount);
+    } else if (difficulty === "medium" && newCount > mediumSolved) {
+      scoreGain = (newCount - mediumSolved) * 20;
+      setMediumSolved(newCount);
+    } else if (difficulty === "hard" && newCount > hardSolved) {
+      scoreGain = (newCount - hardSolved) * 30;
+      setHardSolved(newCount);
+    } else {
+      // If count was decreased or not changed, just update local state
+      if (difficulty === "easy") setEasySolved(newCount);
+      if (difficulty === "medium") setMediumSolved(newCount);
+      if (difficulty === "hard") setHardSolved(newCount);
+    }
 
     try {
       const token = await getAccessToken();
       await updateDsaStatsAPI(e, m, h, token);
+
+      if (scoreGain > 0) {
+        const nextScore = dailyScore + scoreGain;
+        const nextStreak = streakDays === 0 ? 1 : streakDays + 1;
+        setDailyScore(nextScore);
+        setStreakDays(nextStreak);
+        await updateProfileAPI({ dailyScore: nextScore, streakDays: nextStreak }, token);
+      }
     } catch (err) {
       console.error(`Failed to sync ${difficulty} DSA count to database:`, err);
     }
@@ -596,10 +649,8 @@ function MainApp() {
           <DashboardPage 
             personalName={personalName} 
             targetRole={targetRole} 
-            streakDays={12} 
-            dailyScore={92} 
-            missions={missions} 
-            toggleMission={toggleMission} 
+            streakDays={streakDays} 
+            dailyScore={dailyScore} 
             expandedFaq={expandedFaq} 
             setExpandedFaq={setExpandedFaq} 
             onNavigate={(tab) => setActiveTab(tab)}
@@ -616,6 +667,8 @@ function MainApp() {
             resumeScore={analysisResult ? analysisResult.atsScore : null}
             interviewScore={latestEvaluation ? latestEvaluation.rating : null}
             roadmapProgress={roadmap ? "Active Plan" : "No active plan"}
+            jobs={jobs}
+            currentSkills={currentSkills}
           />
         )}
 
@@ -629,11 +682,6 @@ function MainApp() {
             setSkillLevel={setSkillLevel} 
             generateRoadmap={generateRoadmap} 
             generatingRoadmap={generatingRoadmap} 
-            resumeText={resumeText} 
-            setResumeText={setResumeText} 
-            handleCustomResumeAnalyze={handleCustomResumeAnalyze} 
-            isAnalyzingResume={isAnalyzingResume} 
-            analysisResult={analysisResult} 
             roadmap={roadmap} 
             checkedTasks={checkedTasks} 
             onToggleTask={handleToggleRoadmapTask} 
@@ -643,12 +691,27 @@ function MainApp() {
           />
         )}
 
+        {activeTab === "resume" && (
+          <ResumePage 
+            resumeText={resumeText} 
+            setResumeText={setResumeText} 
+            handleCustomResumeAnalyze={handleCustomResumeAnalyze} 
+            isAnalyzingResume={isAnalyzingResume} 
+            analysisResult={analysisResult} 
+            targetRole={targetRole}
+          />
+        )}
+
         {activeTab === "coach" && (
           <InterviewPage 
             interviewActive={interviewActive} 
             setInterviewActive={setInterviewActive} 
             interviewRole={interviewRole} 
             setInterviewRole={setInterviewRole} 
+            interviewType={interviewType}
+            setInterviewType={setInterviewType}
+            interviewDifficulty={interviewDifficulty}
+            setInterviewDifficulty={setInterviewDifficulty}
             currentQuestion={currentQuestion} 
             userAnswer={userAnswer} 
             setUserAnswer={setUserAnswer} 
@@ -675,6 +738,7 @@ function MainApp() {
             setNewJob={setNewJob} 
             handleAddJobCard={handleAddJobCard} 
             deleteJobCard={deleteJobCard} 
+            onUpdateJobStatus={handleUpdateJobStatus}
           />
         )}
 
@@ -734,6 +798,10 @@ function MainApp() {
         <button onClick={() => setActiveTab("roadmap")} className={`flex flex-col items-center gap-1 ${activeTab === "roadmap" ? "text-[#60a5fa]" : ""}`}>
           <Map className="w-5 h-5" />
           <span className="text-[9px] uppercase tracking-wider font-bold">Planning</span>
+        </button>
+        <button onClick={() => setActiveTab("resume")} className={`flex flex-col items-center gap-1 ${activeTab === "resume" ? "text-[#60a5fa]" : ""}`}>
+          <FileText className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wider font-bold">Resume</span>
         </button>
         <button onClick={() => setActiveTab("coach")} className={`flex flex-col items-center gap-1 ${activeTab === "coach" ? "text-[#60a5fa]" : ""}`}>
           <Mic className="w-5 h-5" />

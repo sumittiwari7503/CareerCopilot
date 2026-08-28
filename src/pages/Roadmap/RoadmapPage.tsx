@@ -1,11 +1,9 @@
 import React from "react";
-import { Map, Sparkles, CheckCircle2, Lock, Check, FileText, ArrowRight } from "lucide-react";
-import { CareerRoadmap, ResumeAnalysis, ProjectRecommendation } from "../../types";
+import { Map, Sparkles, CheckCircle2, Lock, Check } from "lucide-react";
+import { CareerRoadmap, ProjectRecommendation } from "../../types";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
-import Score from "../../components/ui/Score";
-import Textarea from "../../components/ui/Textarea";
 import Select from "../../components/ui/Select";
 
 interface RoadmapPageProps {
@@ -17,11 +15,6 @@ interface RoadmapPageProps {
   setSkillLevel: (level: "Beginner" | "Intermediate") => void;
   generateRoadmap: () => void;
   generatingRoadmap: boolean;
-  resumeText: string;
-  setResumeText: (text: string) => void;
-  handleCustomResumeAnalyze: () => void;
-  isAnalyzingResume: boolean;
-  analysisResult: ResumeAnalysis | null;
   roadmap: CareerRoadmap | null;
   checkedTasks: Record<string, boolean>;
   onToggleTask?: (key: string) => void;
@@ -39,11 +32,6 @@ export default function RoadmapPage({
   setSkillLevel,
   generateRoadmap,
   generatingRoadmap,
-  resumeText,
-  setResumeText,
-  handleCustomResumeAnalyze,
-  isAnalyzingResume,
-  analysisResult,
   roadmap,
   checkedTasks,
   onToggleTask,
@@ -72,8 +60,8 @@ export default function RoadmapPage({
         </p>
       </section>
 
-      {/* 2. Config Block (Decoupled layout grid, whitespace margins) */}
-      <Card className="space-y-5">
+      {/* 2. Config Block */}
+      <Card className="p-6 space-y-5">
         
         <div className="grid md:grid-cols-2 gap-4">
           
@@ -96,7 +84,7 @@ export default function RoadmapPage({
                 max="6"
                 value={duration}
                 onChange={(e) => setDuration(parseInt(e.target.value))}
-                className="w-full h-1 bg-white/10 rounded-lg cursor-pointer accent-[#2563EB]"
+                className="w-full h-1.5 bg-white/10 rounded-lg cursor-pointer accent-[#2563EB]"
               />
             </div>
           </div>
@@ -112,7 +100,7 @@ export default function RoadmapPage({
                 type="button"
                 variant={skillLevel === level ? "secondary" : "outline"}
                 onClick={() => setSkillLevel(level as any)}
-                className="flex-1 py-2 text-[10px] tracking-widest"
+                className="flex-1 py-2.5 text-[10px] tracking-widest uppercase font-bold"
               >
                 {level}
               </Button>
@@ -132,120 +120,7 @@ export default function RoadmapPage({
 
       </Card>
 
-      {/* 3. Resume Experience Workflow (Redesigned) */}
-      <Card className="space-y-4">
-        
-        {/* Top Area */}
-        <div className="flex justify-between items-center border-b border-white/5 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#2563EB]/10 flex items-center justify-center border border-[#2563EB]/25 text-[#60a5fa]">
-              <FileText className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <h3 className="text-xs uppercase font-extrabold text-white tracking-wider">ATS Resume Optimizer</h3>
-              <p className="text-[9px] text-gray-400 font-mono">Last analysis: Today • Status: Synced</p>
-            </div>
-          </div>
-          <Badge variant="info">Active parsing</Badge>
-        </div>
-
-        {/* Editor textarea */}
-        <div className="space-y-3">
-          <Textarea 
-            label="Resume text description"
-            value={resumeText}
-            onChange={(e) => setResumeText(e.target.value)}
-            placeholder="Paste raw text details of your resume to parse..."
-            rows={4}
-          />
-          
-          <Button 
-            onClick={handleCustomResumeAnalyze}
-            loading={isAnalyzingResume}
-            variant="outline"
-            className="w-full py-2.5"
-          >
-            Submit to Parser Screening
-          </Button>
-        </div>
-
-        {/* Structured Results Panel */}
-        {analysisResult && (
-          <div className="pt-4 border-t border-white/5 space-y-5">
-            
-            {/* Overall Score */}
-            <Score 
-              score={analysisResult.atsScore}
-              label={analysisResult.compatibilityText}
-              explanation="Your resume's match rate against typical recruiters' applicant tracking rules."
-              breakdown={[
-                { name: "ATS Formatting Match", score: 90 },
-                { name: "Frameworks & Keywords", score: 72 },
-                { name: "Impact Metrics Score", score: 60 }
-              ]}
-            />
-
-            {/* Suggestions (Finding -> Why it matters -> Recommendation -> Action) */}
-            <div className="space-y-3.5">
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Evidence Gaps Analysis</p>
-              
-              {analysisResult.suggestions.map((s, idx) => (
-                <div key={idx} className="p-4 bg-white/2 rounded-xl border border-white/5 space-y-2.5 text-xs relative overflow-hidden">
-                  <div className="absolute top-0 left-0 h-full w-1 bg-[#2563EB]"></div>
-                  
-                  {/* Finding */}
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#60a5fa]" /> Finding: {s.title}
-                    </h4>
-                    <Badge variant={s.evidenceClass === "Existing" ? "success" : s.evidenceClass === "Weak" ? "warning" : "error"}>
-                      {s.evidenceClass} Evidence
-                    </Badge>
-                  </div>
-
-                  {/* Why it matters & Recommendation */}
-                  <div className="space-y-1.5 text-gray-300 pl-5">
-                    <p className="text-[11px] leading-relaxed">
-                      <span className="text-gray-500 font-bold font-mono text-[9px] uppercase tracking-wider block">Evidence Context:</span>
-                      {s.evidenceDetail || "Evidence not found in profile context."}
-                    </p>
-                    <p className="text-[11px] leading-relaxed">
-                      <span className="text-gray-500 font-bold font-mono text-[9px] uppercase tracking-wider block">Actionable Recommendation:</span>
-                      {s.description}
-                    </p>
-                  </div>
-
-                  {/* Action */}
-                  <div className="pt-1.5 pl-5 flex justify-end">
-                    <button className="text-[10px] font-bold text-[#60a5fa] hover:underline uppercase tracking-wider flex items-center gap-1">
-                      {s.actionText} <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                </div>
-              ))}
-            </div>
-
-            {/* Missing keywords list */}
-            {analysisResult.missingKeywords.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-white/5">
-                <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Candidate Skill Gaps (Highly Missing)</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {analysisResult.missingKeywords.map((tag, idx) => (
-                    <Badge key={idx} variant="error">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
-
-      </Card>
-
-      {/* 4. Timeline (Progression Layout) */}
+      {/* 3. Timeline (Progression Layout) */}
       {roadmap && (
         <section className="space-y-4">
           
@@ -261,7 +136,7 @@ export default function RoadmapPage({
                 onClick={generateRoadmap}
                 loading={generatingRoadmap}
                 variant="primary"
-                className="text-[10px] tracking-wider py-2 px-4 shrink-0 bg-purple-600 hover:bg-purple-700 border-none"
+                className="text-[10px] tracking-wider py-2 px-4 shrink-0 bg-purple-600 hover:bg-purple-700 border-none font-bold"
               >
                 Update My Plan
               </Button>
@@ -280,14 +155,14 @@ export default function RoadmapPage({
               <div key={m.id} className="relative space-y-3">
                 
                 {/* Pointer indicator */}
-                <span className={`absolute -left-[25px] top-2 w-2 h-2 rounded-full z-10 ${m.status === "active" ? "bg-[#2563EB] ring-4 ring-[#2563EB]/20" : m.status === "completed" ? "bg-[#10B981]" : "bg-gray-600"}`}></span>
+                <span className={`absolute -left-[25px] top-2.5 w-2 h-2 rounded-full z-10 ${m.status === "active" ? "bg-[#2563EB] ring-4 ring-[#2563EB]/20" : m.status === "completed" ? "bg-[#10B981]" : "bg-gray-600"}`}></span>
                 
-                <div className="bg-[#111827] p-4 rounded-xl border border-white/5 space-y-3.5">
+                <div className="bg-[#111827] p-5 rounded-2xl border border-white/5 space-y-3.5">
                   
                   <div className="flex justify-between items-start border-b border-white/5 pb-2">
                     <div>
-                      <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest block">Month Target</span>
-                      <h4 className="text-xs font-bold text-white">{m.monthTitle}</h4>
+                      <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest block font-bold">Month Target</span>
+                      <h4 className="text-xs font-bold text-white mt-0.5">{m.monthTitle}</h4>
                     </div>
                     {m.status === "locked" ? (
                       <Lock className="w-3.5 h-3.5 text-gray-500" />
@@ -303,11 +178,11 @@ export default function RoadmapPage({
                   {/* Weeks list */}
                   <div className="space-y-3 pt-1">
                     {m.weeks.map((week, wIdx) => (
-                      <div key={wIdx} className="bg-white/2 p-3 rounded-lg border border-white/5 space-y-2">
+                      <div key={wIdx} className="bg-white/2 p-4 rounded-xl border border-white/5 space-y-2">
                         <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#60a5fa] block">Week {week.weekNumber}: {week.weekTitle}</span>
                         <p className="text-[10.5px] italic text-gray-300">Focus: {week.focus}</p>
 
-                        <ul className="space-y-1.5 pt-2 border-t border-white/5">
+                        <ul className="space-y-2 pt-2.5 border-t border-white/5">
                           {week.tasks.map((task, tIdx) => {
                             const key = `${m.id}-w${wIdx}-t${tIdx}`;
                             const done = checkedTasks[key];
@@ -317,7 +192,7 @@ export default function RoadmapPage({
                                 onClick={() => onToggleTask?.(key)}
                                 className="flex items-center gap-2.5 text-[10.5px] cursor-pointer select-none"
                               >
-                                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${done ? "bg-[#10B981] border-[#10B981]" : "border-white/20 hover:border-white/40"}`}>
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${done ? "bg-[#10B981] border-[#10B981]" : "border-white/20 hover:border-white/40"}`}>
                                   {done && <Check className="w-2.5 h-2.5 text-slate-900 stroke-[3px]" />}
                                 </div>
                                 <span className={`${done ? "line-through text-gray-500" : "text-gray-300"}`}>{task}</span>
@@ -338,7 +213,7 @@ export default function RoadmapPage({
         </section>
       )}
 
-      {/* 5. Project recommendations */}
+      {/* 4. Project recommendations */}
       <section className="space-y-4 pt-6 border-t border-white/5">
         <div className="flex justify-between items-center">
           <div>
@@ -351,25 +226,25 @@ export default function RoadmapPage({
             onClick={onGenerateProjects}
             loading={generatingProjects}
             variant="outline"
-            className="px-4 py-2 text-[10px]"
+            className="px-4 py-2.5 text-[10px] uppercase tracking-wider font-bold"
           >
             Generate Projects
           </Button>
         </div>
 
         {projectRecommendations.length === 0 ? (
-          <Card className="text-center py-8 text-xs text-gray-500 border border-dashed border-white/10 bg-transparent">
+          <Card className="text-center py-10 text-xs text-gray-500 border border-dashed border-white/10 bg-transparent rounded-2xl">
             No projects recommended yet. Click "Generate Projects" to analyze your skill gaps.
           </Card>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {projectRecommendations.map((project) => (
-              <Card key={project.id} className="space-y-3.5">
+              <Card key={project.id} className="p-5 space-y-3.5">
                 <div>
                   <Badge variant={project.difficulty === "Advanced" ? "error" : project.difficulty === "Intermediate" ? "warning" : "default"}>
                     {project.difficulty}
                   </Badge>
-                  <h4 className="text-xs font-bold text-white mt-1">{project.title}</h4>
+                  <h4 className="text-xs font-bold text-white mt-1.5">{project.title}</h4>
                   <span className="text-[9px] font-mono text-gray-400 block mt-0.5">Focus Gap: <b className="text-[#60a5fa]">{project.sourceGap}</b></span>
                 </div>
 

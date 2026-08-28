@@ -127,15 +127,30 @@ export default function OnboardingPage({ onComplete, loading }: OnboardingPagePr
     <div className="min-h-screen bg-[#0b0f19] text-gray-200 flex flex-col justify-between p-6 md:p-10 font-sans">
       
       {/* 1. Header progress tracking */}
-      <header className="flex justify-between items-center max-w-xl mx-auto w-full mb-8">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#2563EB] to-[#4F46E5] flex items-center justify-center border border-white/10">
-            <Compass className="w-4 h-4 text-white" />
+      <header className="max-w-xl mx-auto w-full mb-8 space-y-3 shrink-0">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#2563EB] to-[#8b5cf6] flex items-center justify-center border border-white/10 shadow-lg shadow-[#2563EB]/10">
+              <Compass className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className="text-[10px] font-mono tracking-widest text-white uppercase font-bold">CareerCopilot</span>
           </div>
-          <span className="text-[10px] font-mono tracking-widest text-white uppercase font-bold">CareerCopilot</span>
+          <div className="text-[10px] font-mono text-gray-400 font-bold">
+            Step {step} of 9
+          </div>
         </div>
-        <div className="text-[10px] font-mono text-gray-400">
-          Step {step} of 9
+        {/* Progress segments bar */}
+        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden flex gap-1">
+          {Array.from({ length: 9 }).map((_, idx) => (
+            <div 
+              key={idx} 
+              className={`h-full flex-1 transition-all duration-500 rounded-full ${
+                idx + 1 <= step 
+                  ? "bg-gradient-to-r from-[#2563EB] to-[#8b5cf6]" 
+                  : "bg-white/5"
+              }`}
+            />
+          ))}
         </div>
       </header>
 

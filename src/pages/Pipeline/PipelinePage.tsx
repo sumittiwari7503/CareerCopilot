@@ -1,5 +1,5 @@
 import React from "react";
-import { Briefcase, Plus, Trash2, X, PlusCircle, Calendar, MapPin } from "lucide-react";
+import { Briefcase, Plus, Trash2, X, PlusCircle, Calendar, MapPin, Check } from "lucide-react";
 import { JobCard } from "../../types";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
@@ -29,6 +29,7 @@ interface PipelinePageProps {
   }>>;
   handleAddJobCard: () => void;
   deleteJobCard: (id: string) => void;
+  onUpdateJobStatus?: (id: string, nextStatus: "Wishlist" | "Applied" | "Assessment" | "Interview" | "Offer") => void;
 }
 
 export default function PipelinePage({
@@ -39,7 +40,8 @@ export default function PipelinePage({
   newJob,
   setNewJob,
   handleAddJobCard,
-  deleteJobCard
+  deleteJobCard,
+  onUpdateJobStatus
 }: PipelinePageProps) {
   // Available Stages
   const stages = ["Wishlist", "Applied", "Assessment", "Interview", "Offer"] as const;
@@ -72,19 +74,19 @@ export default function PipelinePage({
         <Button 
           onClick={() => setShowAddJobModal(true)}
           variant="primary"
-          className="px-3.5 py-2.5"
+          className="px-4 py-2.5 font-bold text-xs"
           icon={<Plus className="w-4 h-4" />}
         >
           Add Job
         </Button>
       </section>
 
-      {/* 2. Desktop Kanban Board (Hidden on mobile/tablet, multi-column grid) */}
-      <div className="hidden lg:grid grid-cols-5 gap-3.5 items-start">
+      {/* 2. Desktop Kanban Board */}
+      <div className="hidden lg:grid grid-cols-5 gap-4 items-start">
         {stages.map((stage) => {
           const stageJobs = getJobsByStage(stage);
           return (
-            <div key={stage} className="space-y-3.5">
+            <div key={stage} className="space-y-3.5 bg-white/2 p-3 rounded-2xl border border-white/5 min-h-[500px] flex flex-col">
               
               {/* Column Header */}
               <div className="flex justify-between items-center border-b border-white/5 pb-2">
@@ -95,32 +97,42 @@ export default function PipelinePage({
               </div>
 
               {/* Column Cards List */}
-              <div className="space-y-2.5 min-h-[300px]">
+              <div className="space-y-3 pt-2 flex-1">
                 {stageJobs.length === 0 ? (
-                  <div className="text-center py-8 text-[10px] text-gray-600 border border-dashed border-white/5 rounded-xl">
+                  <div className="text-center py-12 text-[10px] text-gray-500 border border-dashed border-white/5 rounded-xl flex items-center justify-center h-full">
                     Empty Stage
                   </div>
                 ) : (
                   stageJobs.map((j) => (
-                    <Card key={j.id} variant="compact" className="bg-[#111827] border border-white/5 space-y-2.5 relative group">
+                    <Card key={j.id} className="bg-[#111827] border border-white/5 p-4 space-y-3 relative group transition-all hover:border-white/15">
                       
                       {/* Title & priority check */}
                       <div className="flex justify-between items-start gap-1">
                         <div className="min-w-0">
-                          <h4 className="text-[11px] font-bold text-white truncate">{j.title}</h4>
-                          <span className="text-[10px] text-gray-400 block truncate">{j.company}</span>
+                          <h4 className="text-xs font-bold text-white truncate leading-snug">{j.title}</h4>
+                          <span className="text-[10.5px] text-gray-400 block truncate mt-0.5">{j.company}</span>
                         </div>
-                        {j.priorityFlag && <Badge variant="error" className="px-1 py-0 text-[8px]">P</Badge>}
+                        {j.priorityFlag && <Badge variant="error" className="px-1 py-0 text-[8px] font-mono shrink-0">Priority</Badge>}
                       </div>
 
                       {/* Location and Date details */}
                       <div className="flex justify-between items-center text-[9px] font-mono text-gray-500">
-                        <span className="flex items-center gap-0.5 truncate max-w-[50%]"><MapPin className="w-2.5 h-2.5" /> {j.location || "Remote"}</span>
+                        <span className="flex items-center gap-0.5 truncate max-w-[55%]"><MapPin className="w-2.5 h-2.5" /> {j.location || "Remote"}</span>
                         <span className="truncate">{j.date}</span>
                       </div>
 
-                      {/* Hover action delete icon */}
-                      <div className="flex justify-end pt-1 border-t border-white/2">
+                      {/* Stage Selector and Actions */}
+                      <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                        <select
+                          value={j.status}
+                          onChange={(e) => onUpdateJobStatus?.(j.id, e.target.value as any)}
+                          className="bg-transparent border-none text-[9px] font-mono text-gray-400 hover:text-white cursor-pointer focus:outline-none bg-[#111827] border border-white/5 p-1 rounded hover:bg-white/5 transition-all"
+                        >
+                          {stages.map(st => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+
                         <button 
                           onClick={() => deleteJobCard(j.id)}
                           className="text-gray-500 hover:text-red-400 transition-colors p-1"
@@ -139,23 +151,8 @@ export default function PipelinePage({
         })}
       </div>
 
-      {/* 3. Mobile/Tablet Staged view lists (Collapses giant horizontal table) */}
+      {/* 3. Mobile/Tablet Staged view lists */}
       <div className="lg:hidden space-y-4">
-        
-        {/* Horizontal scroll select status column tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1.5 no-scrollbar text-xs">
-          {stages.map((stage) => (
-            <button
-              key={stage}
-              onClick={() => {}}
-              className="px-3.5 py-1.5 rounded-full border border-white/5 text-[10px] font-bold uppercase tracking-wider bg-white/2 text-gray-400"
-            >
-              {stage}
-            </button>
-          ))}
-        </div>
-
-        {/* Unified list board showing all card statuses */}
         <div className="space-y-3">
           {jobs.length === 0 ? (
             <div className="text-center py-10 text-xs text-gray-500">
@@ -163,16 +160,16 @@ export default function PipelinePage({
             </div>
           ) : (
             jobs.map((j) => (
-              <Card key={j.id} className="flex justify-between items-center">
+              <Card key={j.id} className="p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-bold text-white text-xs font-serif uppercase shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-bold text-white text-xs font-mono uppercase shrink-0">
                     {j.company.slice(0, 2)}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-white">{j.title}</h4>
-                      {j.priorityFlag && <Badge variant="error">Priority</Badge>}
+                      <h4 className="text-xs font-bold text-white truncate">{j.title}</h4>
+                      {j.priorityFlag && <Badge variant="error" className="text-[8px] font-mono">Priority</Badge>}
                     </div>
                     <p className="text-[11px] text-gray-400">
                       {j.company} • <span className="font-mono">{j.location || "Remote"}</span>
@@ -180,15 +177,23 @@ export default function PipelinePage({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-[10px] font-mono text-gray-500 block">{j.date}</span>
-                    <Badge variant="default" className="mt-1">{j.status}</Badge>
+                <div className="flex justify-between sm:justify-end items-center gap-4 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 font-mono">{j.date}</span>
+                    <select
+                      value={j.status}
+                      onChange={(e) => onUpdateJobStatus?.(j.id, e.target.value as any)}
+                      className="bg-transparent border border-white/10 text-[9px] font-mono text-gray-400 hover:text-white cursor-pointer focus:outline-none bg-[#111827] p-1 rounded hover:bg-white/5 transition-all"
+                    >
+                      {stages.map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
                   </div>
                   
                   <button 
                     onClick={() => deleteJobCard(j.id)}
-                    className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+                    className="p-1.5 text-gray-500 hover:text-red-400 transition-colors border border-white/5 rounded-lg hover:bg-white/5"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -198,66 +203,84 @@ export default function PipelinePage({
             ))
           )}
         </div>
-
       </div>
 
-      {/* 4. Add Job Modal Overlay */}
+      {/* 4. Add Job Modal */}
       {showAddJobModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-[#111827] border border-white/10 rounded-2xl p-5 w-full max-w-sm space-y-4">
-            
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h4 className="text-xs uppercase font-extrabold text-white tracking-wider">Tether Job Target</h4>
-              <button onClick={() => setShowAddJobModal(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <Card className="max-w-md w-full p-6 space-y-4 relative border-white/10 shadow-2xl">
+            <button 
+              onClick={() => setShowAddJobModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Add Job Opportunity</h3>
+              <p className="text-[11px] text-gray-400">Track target positions from your target engineering list.</p>
             </div>
 
-            <div className="space-y-3.5">
+            <div className="space-y-3 pt-2">
               <Input 
                 label="Job Title"
                 value={newJob.title}
-                onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
-                placeholder="e.g. Frontend Specialist"
-                required
+                onChange={(e) => setNewJob(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g. Senior Frontend Architect"
+                className="text-xs"
               />
 
               <Input 
                 label="Company Name"
                 value={newJob.company}
-                onChange={(e) => setNewJob({ ...newJob, company: e.target.value })}
-                placeholder="e.g. Vercel Inc"
-                required
+                onChange={(e) => setNewJob(prev => ({ ...prev, company: e.target.value }))}
+                placeholder="e.g. Google"
+                className="text-xs"
               />
 
-              <Select 
-                label="Status Stage"
-                value={newJob.status}
-                onChange={(e) => setNewJob({ ...newJob, status: e.target.value as any })}
-                options={statusOptions}
-              />
-
-              <div className="flex gap-2 items-center pt-1.5 select-none">
-                <input 
-                  type="checkbox"
-                  id="modal-priority-chk"
-                  checked={newJob.priorityFlag}
-                  onChange={(e) => setNewJob({ ...newJob, priorityFlag: e.target.checked })}
-                  className="rounded border-white/20 accent-[#2563EB]"
+              <div className="grid grid-cols-2 gap-3">
+                <Input 
+                  label="Office Location"
+                  value={newJob.location}
+                  onChange={(e) => setNewJob(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="e.g. Mountain View, CA"
+                  className="text-xs"
                 />
-                <label htmlFor="modal-priority-chk" className="text-[10px] uppercase font-bold text-gray-400 tracking-wider cursor-pointer">
-                  Mark as Priority Application
-                </label>
+
+                <Select 
+                  label="Application Stage"
+                  value={newJob.status}
+                  onChange={(e) => setNewJob(prev => ({ ...prev, status: e.target.value as any }))}
+                  options={statusOptions}
+                />
+              </div>
+
+              <div className="flex items-center gap-2.5 py-1.5 cursor-pointer select-none" onClick={() => setNewJob(prev => ({ ...prev, priorityFlag: !prev.priorityFlag }))}>
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${newJob.priorityFlag ? "bg-red-500 border-red-500" : "border-white/20 hover:border-white/40"}`}>
+                  {newJob.priorityFlag && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}
+                </div>
+                <span className="text-xs text-gray-300 font-bold">Mark as High Priority Goal</span>
               </div>
             </div>
 
-            <Button 
-              onClick={handleAddJobCard}
-              variant="primary"
-              className="w-full py-2.5"
-            >
-              Add to Pipeline
-            </Button>
+            <div className="flex gap-3 pt-3 border-t border-white/5">
+              <Button 
+                onClick={() => setShowAddJobModal(false)}
+                variant="outline" 
+                className="flex-1 py-2.5 text-xs font-bold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddJobCard}
+                variant="primary" 
+                className="flex-1 py-2.5 text-xs font-bold"
+              >
+                Save Tracking Card
+              </Button>
+            </div>
 
-          </div>
+          </Card>
         </div>
       )}
 

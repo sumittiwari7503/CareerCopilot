@@ -1,9 +1,9 @@
 import React from "react";
-import { Compass, Map, Mic, Briefcase, TrendingUp, Settings } from "lucide-react";
+import { Compass, Map, FileText, Mic, Briefcase, TrendingUp, Settings } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
-  setActiveTab: (tab: "home" | "roadmap" | "coach" | "jobs" | "tracker" | "settings") => void;
+  setActiveTab: (tab: "home" | "roadmap" | "resume" | "coach" | "jobs" | "tracker" | "settings") => void;
   userName: string;
   userLevel: string;
   avatar: string;
@@ -13,6 +13,7 @@ export default function Sidebar({ activeTab, setActiveTab, userName, userLevel, 
   const links = [
     { id: "home", label: "Home Dashboard", icon: Compass },
     { id: "roadmap", label: "Prep Planning", icon: Map },
+    { id: "resume", label: "Resume Optimizer", icon: FileText },
     { id: "coach", label: "AI Mock Coach", icon: Mic },
     { id: "jobs", label: "Jobs Pipeline", icon: Briefcase },
     { id: "tracker", label: "DSA Tracker", icon: TrendingUp },

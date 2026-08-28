@@ -173,7 +173,7 @@ If evidence is unavailable, explicitly state "Evidence not found".`,
 // Endpoints 3: Interactive Mock Interview Coach
 // ----------------------------------------------------
 router.post("/mock-interview/question", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { role, currentQuestion, userAnswer, isEnding } = req.body;
+  const { role, currentQuestion, userAnswer, isEnding, type, difficulty } = req.body;
   
   if (!role) {
     return res.status(400).json({ error: "Role is required" });
@@ -189,9 +189,15 @@ router.post("/mock-interview/question", requireAuth, async (req: AuthenticatedRe
     let prompt = "";
     let systemInstruction = "";
 
+    const typeVal = type || "Technical";
+    const diffVal = difficulty || "Mid";
+
     if (isEnding) {
       systemInstruction = "You are a seasoned hiring manager compiling candidate feedback. Output valid JSON.";
-      prompt = `Provide a beautiful and professional Candidate Interview Summary for a "${role}" candidate who just completed their mock interview session. Evaluate the overall strengths, readiness tier ("Strong" | "Moderate" | "Needs Improvement"), overall score, and growth pathways.`;
+      prompt = `Provide a beautiful and professional Candidate Interview Summary for a "${role}" candidate who just completed their mock interview session.
+      Focus context: ${typeVal} Interview.
+      Seniority benchmark: ${diffVal} level.
+      Evaluate the overall strengths, readiness tier ("Strong" | "Moderate" | "Needs Improvement"), overall score, and growth pathways.`;
 
       const response = await generateContentWithFallback(ai, {
         contents: prompt,
@@ -222,17 +228,22 @@ router.post("/mock-interview/question", requireAuth, async (req: AuthenticatedRe
         return res.json(JSON.parse(text));
       }
     } else {
-      systemInstruction = "You are a friendly, highly skilled engineering manager conducting an interactive candidate screening. Respond precisely to the user's answer and ask a great follow-up technical or behavioral question. Output valid JSON.";
+      systemInstruction = `You are a friendly, highly skilled engineering manager conducting an interactive candidate screening. 
+      Interview Type Focus: ${typeVal} focus.
+      Target Candidate Seniority: ${diffVal} level.
+      Respond precisely to the user's answer and ask a great follow-up question. Output valid JSON.`;
       
       if (!currentQuestion) {
-        prompt = `This is the very first question of the mock interview for a "${role}" position. Ask a great, challenging first question. Keep previous userAnswer and explanation sections blank/empty.`;
+        prompt = `This is the very first question of the mock interview for a "${role}" position. 
+        Focus specifically on asking a challenging first question of type ${typeVal} suitable for a ${diffVal}-level candidate. 
+        Keep previous userAnswer and explanation sections blank/empty.`;
       } else {
-        prompt = `Inside an interview for a "${role}" role, the question was: "${currentQuestion}". 
+        prompt = `Inside an interview for a "${role}" role (Focus Type: ${typeVal}, Difficulty: ${diffVal}), the question was: "${currentQuestion}". 
         The candidate answered: "${userAnswer || ""}".
         As the interviewer:
         1. Evaluate the answer (rating 0-100, confidence, speechRateText, pacing).
         2. Give a warm, constructive brief explanation of feedback.
-        3. Formulate the NEXT follow-up question.`;
+        3. Formulate the NEXT follow-up question matching the focus type and difficulty.`;
       }
 
       const response = await generateContentWithFallback(ai, {

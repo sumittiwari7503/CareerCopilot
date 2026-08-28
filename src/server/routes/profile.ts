@@ -77,7 +77,9 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     targetTimeline,
     timeAvailable,
     currentSkills,
-    onboardingCompleted
+    onboardingCompleted,
+    dailyScore,
+    streakDays
   } = req.body;
 
   if (fullName !== undefined && (typeof fullName !== "string" || fullName.trim() === "")) {
@@ -116,7 +118,9 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
         ...(parsedTimeline !== undefined && { targetTimeline: parsedTimeline }),
         ...(timeAvailable !== undefined && { timeAvailable }),
         ...(currentSkills !== undefined && { currentSkills: parsedSkills }),
-        ...(onboardingCompleted !== undefined && { onboardingCompleted: !!onboardingCompleted })
+        ...(onboardingCompleted !== undefined && { onboardingCompleted: !!onboardingCompleted }),
+        ...(dailyScore !== undefined && { dailyScore: parseInt(dailyScore, 10) }),
+        ...(streakDays !== undefined && { streakDays: parseInt(streakDays, 10) })
       }
     });
 
