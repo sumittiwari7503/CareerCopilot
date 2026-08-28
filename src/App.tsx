@@ -76,8 +76,8 @@ function MainApp() {
   
   // Hydrated Profile data
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const [personalName, setPersonalName] = useState("Alex Rivera");
-  const [personalEmail, setPersonalEmail] = useState("alex.rivera@aether.io");
+  const [personalName, setPersonalName] = useState("");
+  const [personalEmail, setPersonalEmail] = useState("");
   const [userLevel, setUserLevel] = useState("L5");
   const [easySolved, setEasySolved] = useState(0);
   const [mediumSolved, setMediumSolved] = useState(0);
@@ -114,12 +114,7 @@ function MainApp() {
   const [interviewDifficulty, setInterviewDifficulty] = useState("Mid");
   const [conversationHistory, setConversationHistory] = useState<{ q: string; a: string; score?: number }[]>([]);
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
-  const [latestEvaluation, setLatestEvaluation] = useState<{ rating: number; confidence: string; pacingScore?: number; explanation?: string } | null>({
-    rating: 92,
-    confidence: "Confident",
-    pacingScore: 95,
-    explanation: "Awesome start. Let's drill deeper."
-  });
+  const [latestEvaluation, setLatestEvaluation] = useState<{ rating: number; confidence: string; pacingScore?: number; explanation?: string } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [interviewSummary, setInterviewSummary] = useState<InterviewSummary | null>(null);

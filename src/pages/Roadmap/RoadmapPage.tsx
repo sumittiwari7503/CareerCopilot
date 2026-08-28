@@ -39,13 +39,23 @@ export default function RoadmapPage({
   onGenerateProjects,
   generatingProjects
 }: RoadmapPageProps) {
-  // Target roles dropdown choices
-  const roleOptions = [
+  // Target roles dropdown choices matching onboarding options
+  const defaultRoleOptions = [
+    { value: "Software Engineer", label: "Software Engineer" },
     { value: "Frontend Engineer", label: "Frontend Engineer" },
     { value: "Backend Engineer", label: "Backend Engineer" },
+    { value: "Full Stack Engineer", label: "Full Stack Engineer" },
     { value: "Fullstack Developer", label: "Fullstack Developer" },
+    { value: "Data Analyst", label: "Data Analyst" },
+    { value: "Data Scientist", label: "Data Scientist" },
+    { value: "DevOps Engineer", label: "DevOps Engineer" },
     { value: "SDE at Google", label: "SDE at Google" }
   ];
+
+  const roleOptions = [...defaultRoleOptions];
+  if (targetRole && !roleOptions.some(opt => opt.value === targetRole)) {
+    roleOptions.push({ value: targetRole, label: targetRole });
+  }
 
   return (
     <div className="space-y-8">
