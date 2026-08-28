@@ -30,11 +30,13 @@ router.get("/recommendations", requireAuth, async (req: AuthenticatedRequest, re
 // POST /api/projects/recommendations/generate
 router.post("/recommendations/generate", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  let role = "Software Developer";
+  let missingSkills: string[] = ["TypeScript", "Vitest", "Docker"];
 
   try {
     // Fetch profile
     const profile = await prisma.profile.findFirst({ where: { userId } });
-    const role = profile?.targetRole || "Software Developer";
+    if (profile?.targetRole) role = profile.targetRole;
 
     // Fetch latest resume version text
     const latestResume = await prisma.resume.findFirst({
@@ -50,7 +52,9 @@ router.post("/recommendations/generate", requireAuth, async (req: AuthenticatedR
     });
 
     const resumeText = latestResume?.versions[0]?.extractedText || "";
-    const missingSkills = latestResume?.versions[0]?.analysis?.missingKeywords || ["TypeScript", "Vitest", "Docker"];
+    if (latestResume?.versions[0]?.analysis?.missingKeywords) {
+      missingSkills = latestResume.versions[0].analysis.missingKeywords;
+    }
 
     // 1. If Gemini API key is missing, fall back to procedural project recommendations
     if (!hasGeminiKey()) {
@@ -139,8 +143,18 @@ Output valid JSON matching the exact schema specified.`,
     return res.json(created);
 
   } catch (error: any) {
-    console.error("Failed to generate project recommendations:", error);
-    return res.status(500).json({ error: "Failed to generate project recommendations" });
+    console.warn("AI project generation failed. Falling back to procedural projects:", error.message);
+    try {
+      const fallbacks = getProceduralProjects(userId, role, missingSkills);
+      await prisma.projectRecommendation.deleteMany({ where: { userId } });
+      const created = await Promise.all(
+        fallbacks.map(p => prisma.projectRecommendation.create({ data: p }))
+      );
+      return res.json(created);
+    } catch (fallbackErr: any) {
+      console.error("Failed to run projects fallback generation:", fallbackErr);
+      return res.status(500).json({ error: "Failed to generate project recommendations" });
+    }
   }
 });
 

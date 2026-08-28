@@ -3,6 +3,7 @@ import { Type } from "@google/genai";
 import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { getGemini, hasGeminiKey, generateContentWithFallback } from "../services/ai";
 import { safeValidateAIJSON, ResumeAnalysisSchema } from "../utils/aiValidation";
+import { prisma } from "../db/prisma";
 
 const router = Router();
 
@@ -91,7 +92,147 @@ router.post("/generate-roadmap", requireAuth, async (req: AuthenticatedRequest, 
 // ----------------------------------------------------
 // Endpoints 2: Resume ATS Optimizer / Analyzer
 // ----------------------------------------------------
+// Helper function to persist resume and its analysis inside PostgreSQL
+async function saveResumeAnalysis(userId: string, resumeText: string, analysisData: any) {
+  try {
+    let resume = await prisma.resume.findFirst({
+      where: { userId }
+    });
+    if (!resume) {
+      resume = await prisma.resume.create({
+        data: {
+          userId,
+          title: "My Resume"
+        }
+      });
+    }
+
+    const latestVersion = await prisma.resumeVersion.findFirst({
+      where: { resumeId: resume.id },
+      orderBy: { versionNo: "desc" }
+    });
+    const nextVersionNo = latestVersion ? latestVersion.versionNo + 1 : 1;
+
+    const resumeVersion = await prisma.resumeVersion.create({
+      data: {
+        resumeId: resume.id,
+        fileUrl: "pasted",
+        extractedText: resumeText,
+        versionNo: nextVersionNo
+      }
+    });
+
+    await prisma.resumeAnalysis.create({
+      data: {
+        resumeVersionId: resumeVersion.id,
+        atsScore: analysisData.atsScore,
+        compatibilityText: analysisData.compatibilityText,
+        suggestions: JSON.parse(JSON.stringify(analysisData.suggestions)),
+        missingKeywords: analysisData.missingKeywords
+      }
+    });
+  } catch (err) {
+    console.error("Failed to save resume analysis to database:", err);
+  }
+}
+
+router.get("/resume/latest", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  try {
+    const resume = await prisma.resume.findFirst({
+      where: { userId },
+      include: {
+        versions: {
+          orderBy: { versionNo: "desc" },
+          take: 1,
+          include: {
+            analysis: true
+          }
+        }
+      }
+    });
+
+    if (!resume || resume.versions.length === 0) {
+      return res.json(null);
+    }
+
+    const latestVersion = resume.versions[0];
+    return res.json({
+      id: resume.id,
+      text: latestVersion.extractedText,
+      analysis: latestVersion.analysis ? {
+        atsScore: latestVersion.analysis.atsScore,
+        compatibilityText: latestVersion.analysis.compatibilityText,
+        suggestions: latestVersion.analysis.suggestions,
+        missingKeywords: latestVersion.analysis.missingKeywords
+      } : null
+    });
+  } catch (err) {
+    console.error("Failed to fetch latest resume:", err);
+    return res.status(500).json({ error: "Failed to fetch latest resume" });
+  }
+});
+
+router.post("/resume/apply-fix", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const { title, description, evidenceDetail, resumeText } = req.body;
+  if (!resumeText) {
+    return res.status(400).json({ error: "Resume text is empty" });
+  }
+
+  if (!hasGeminiKey()) {
+    const before = evidenceDetail || "improved performance";
+    const after = `optimized query response speeds by 40% using Redis caching tethers`;
+    return res.json({ before, after });
+  }
+
+  try {
+    const ai = getGemini();
+    const prompt = `You are a professional resume writer. Look at the candidate's resume text:
+    \"\"\"
+    ${resumeText}
+    \"\"\"
+    We want to address this ATS suggestion:
+    Suggestion Title: "${title}"
+    Suggestion Description: "${description}"
+    Evidence of weakness in resume: "${evidenceDetail}"
+    
+    Identify the exact paragraph, bullet point, or sentence in the resume matching the weakness ("${evidenceDetail}").
+    Generate a high-quality rewritten version of this text that incorporates specific metrics, keywords, or structure requested in the suggestion, without fabricating false qualifications.
+    Output a JSON object with:
+    - "before": the exact text currently in the resume.
+    - "after": the newly improved rewritten text.`;
+
+    const response = await generateContentWithFallback(ai, {
+      contents: prompt,
+      config: {
+        systemInstruction: "You are a professional resume writer and career coach. Respond only with valid JSON containing 'before' and 'after' properties.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            before: { type: Type.STRING },
+            after: { type: Type.STRING }
+          },
+          required: ["before", "after"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (text) {
+      return res.json(JSON.parse(text));
+    }
+    throw new Error("Empty response from AI fix generator");
+  } catch (err: any) {
+    console.warn("AI resume fix failed, falling back to procedural replacement:", err.message);
+    const before = evidenceDetail || "improved performance";
+    const after = `optimized query response speeds by 40% using Redis caching tethers`;
+    return res.json({ before, after });
+  }
+});
+
 router.post("/resume-analyze", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
   const { resumeText, targetRole } = req.body;
   if (!resumeText) {
     return res.status(400).json({ error: "Resume text is empty" });
@@ -101,7 +242,9 @@ router.post("/resume-analyze", requireAuth, async (req: AuthenticatedRequest, re
 
   if (!hasGeminiKey()) {
     console.log("No API key available. Returning procedural resume optimizer output.");
-    return res.json(getProceduralResumeAnalysis(resumeText, role));
+    const validated = getProceduralResumeAnalysis(resumeText, role);
+    await saveResumeAnalysis(userId, resumeText, validated);
+    return res.json(validated);
   }
 
   try {
@@ -162,10 +305,13 @@ If evidence is unavailable, explicitly state "Evidence not found".`,
       ResumeAnalysisSchema,
       getProceduralResumeAnalysis(resumeText, role)
     );
+    await saveResumeAnalysis(userId, resumeText, validated);
     return res.json(validated);
   } catch (error) {
     console.log("[Gemini] Resume parser falling back to procedural advisor due to transient API state.");
-    return res.json(getProceduralResumeAnalysis(resumeText, role));
+    const validated = getProceduralResumeAnalysis(resumeText, role);
+    await saveResumeAnalysis(userId, resumeText, validated);
+    return res.json(validated);
   }
 });
 
@@ -173,114 +319,202 @@ If evidence is unavailable, explicitly state "Evidence not found".`,
 // Endpoints 3: Interactive Mock Interview Coach
 // ----------------------------------------------------
 router.post("/mock-interview/question", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { role, currentQuestion, userAnswer, isEnding, type, difficulty } = req.body;
+  const userId = req.user!.id;
+  const { role, currentQuestion, userAnswer, isEnding, type, difficulty, sessionId } = req.body;
   
   if (!role) {
     return res.status(400).json({ error: "Role is required" });
   }
 
-  if (!hasGeminiKey()) {
-    console.log("No API key available. Returning procedural interview dialog.");
-    return res.json(getProceduralInterviewResponse(role, currentQuestion, userAnswer, isEnding));
-  }
+  const typeVal = type || "Technical";
+  const diffVal = difficulty || "Mid";
+  let activeSessionId = sessionId;
 
   try {
-    const ai = getGemini();
-    let prompt = "";
-    let systemInstruction = "";
-
-    const typeVal = type || "Technical";
-    const diffVal = difficulty || "Mid";
-
     if (isEnding) {
-      systemInstruction = "You are a seasoned hiring manager compiling candidate feedback. Output valid JSON.";
-      prompt = `Provide a beautiful and professional Candidate Interview Summary for a "${role}" candidate who just completed their mock interview session.
-      Focus context: ${typeVal} Interview.
-      Seniority benchmark: ${diffVal} level.
-      Evaluate the overall strengths, readiness tier ("Strong" | "Moderate" | "Needs Improvement"), overall score, and growth pathways.`;
-
-      const response = await generateContentWithFallback(ai, {
-        contents: prompt,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              readinessLevel: { type: Type.STRING },
-              overallScore: { type: Type.INTEGER },
-              strengths: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              },
-              improvements: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              }
-            },
-            required: ["readinessLevel", "overallScore", "strengths", "improvements"]
-          }
-        }
-      });
-
-      const text = response.text;
-      if (text) {
-        return res.json(JSON.parse(text));
+      let session = null;
+      if (activeSessionId) {
+        session = await prisma.interviewSession.findFirst({
+          where: { id: activeSessionId, userId }
+        });
       }
-    } else {
-      systemInstruction = `You are a friendly, highly skilled engineering manager conducting an interactive candidate screening. 
-      Interview Type Focus: ${typeVal} focus.
-      Target Candidate Seniority: ${diffVal} level.
-      Respond precisely to the user's answer and ask a great follow-up question. Output valid JSON.`;
-      
-      if (!currentQuestion) {
-        prompt = `This is the very first question of the mock interview for a "${role}" position. 
-        Focus specifically on asking a challenging first question of type ${typeVal} suitable for a ${diffVal}-level candidate. 
-        Keep previous userAnswer and explanation sections blank/empty.`;
+
+      // AI Grading
+      let summaryResult;
+      if (!hasGeminiKey()) {
+        summaryResult = getProceduralInterviewResponse(role, currentQuestion, userAnswer, true);
       } else {
-        prompt = `Inside an interview for a "${role}" role (Focus Type: ${typeVal}, Difficulty: ${diffVal}), the question was: "${currentQuestion}". 
-        The candidate answered: "${userAnswer || ""}".
-        As the interviewer:
-        1. Evaluate the answer (rating 0-100, confidence, speechRateText, pacing).
-        2. Give a warm, constructive brief explanation of feedback.
-        3. Formulate the NEXT follow-up question matching the focus type and difficulty.`;
-      }
+        try {
+          const ai = getGemini();
+          const systemInstruction = "You are a seasoned hiring manager compiling candidate feedback. Output valid JSON.";
+          const prompt = `Provide a beautiful and professional Candidate Interview Summary for a "${role}" candidate who just completed their mock interview session.
+          Focus context: ${typeVal} Interview.
+          Seniority benchmark: ${diffVal} level.
+          Evaluate the overall strengths, readiness tier ("Strong" | "Moderate" | "Needs Improvement"), overall score, and growth pathways.`;
 
-      const response = await generateContentWithFallback(ai, {
-        contents: prompt,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              evaluation: {
+          const response = await generateContentWithFallback(ai, {
+            contents: prompt,
+            config: {
+              systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                  rating: { type: Type.INTEGER },
-                  confidence: { type: Type.STRING },
-                  speechRateText: { type: Type.STRING },
-                  pacingScore: { type: Type.INTEGER }
+                  readinessLevel: { type: Type.STRING },
+                  overallScore: { type: Type.INTEGER },
+                  strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  improvements: { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
-                required: ["rating", "confidence", "speechRateText", "pacingScore"]
-              },
-              nextQuestion: { type: Type.STRING },
-              explanation: { type: Type.STRING }
-            },
-            required: ["evaluation", "nextQuestion", "explanation"]
+                required: ["readinessLevel", "overallScore", "strengths", "improvements"]
+              }
+            }
+          });
+          const text = response.text;
+          summaryResult = text ? JSON.parse(text) : getProceduralInterviewResponse(role, currentQuestion, userAnswer, true);
+        } catch (e) {
+          summaryResult = getProceduralInterviewResponse(role, currentQuestion, userAnswer, true);
+        }
+      }
+
+      // Update session in DB
+      if (session) {
+        await prisma.interviewSession.update({
+          where: { id: session.id },
+          data: {
+            overallScore: summaryResult.overallScore,
+            readinessLevel: summaryResult.readinessLevel,
+            strengths: summaryResult.strengths,
+            improvements: summaryResult.improvements
           }
+        });
+      }
+
+      return res.json(summaryResult);
+    } else {
+      // Running conversation
+      let session = null;
+      if (activeSessionId) {
+        session = await prisma.interviewSession.findFirst({
+          where: { id: activeSessionId, userId }
+        });
+      }
+
+      if (!session) {
+        session = await prisma.interviewSession.create({
+          data: {
+            userId,
+            roleContext: `${role} (${typeVal} - ${diffVal})`
+          }
+        });
+        activeSessionId = session.id;
+      }
+
+      let questionResult;
+      if (!hasGeminiKey()) {
+        questionResult = getProceduralInterviewResponse(role, currentQuestion, userAnswer, false);
+      } else {
+        try {
+          const ai = getGemini();
+          const systemInstruction = `You are a friendly, highly skilled engineering manager conducting an interactive candidate screening. 
+          Interview Focus: ${typeVal} focus.
+          Target Candidate Seniority: ${diffVal} level.
+          Respond precisely to the user's answer and ask a great follow-up question. Output valid JSON.`;
+          
+          let prompt = "";
+          if (!currentQuestion) {
+            prompt = `This is the very first question of the mock interview for a "${role}" position. 
+            Focus specifically on asking a challenging first question of type ${typeVal} suitable for a ${diffVal}-level candidate. 
+            Keep previous userAnswer and explanation sections blank/empty.`;
+          } else {
+            prompt = `Inside an interview for a "${role}" role (Focus Type: ${typeVal}, Difficulty: ${diffVal}), the question was: "${currentQuestion}". 
+            The candidate answered: "${userAnswer || ""}".
+            As the interviewer:
+            1. Evaluate the answer (rating 0-100, confidence, speechRateText, pacing).
+            2. Give a warm, constructive brief explanation of feedback.
+            3. Formulate the NEXT follow-up question matching the focus type and difficulty.`;
+          }
+
+          const response = await generateContentWithFallback(ai, {
+            contents: prompt,
+            config: {
+              systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  evaluation: {
+                    type: Type.OBJECT,
+                    properties: {
+                      rating: { type: Type.INTEGER },
+                      confidence: { type: Type.STRING },
+                      speechRateText: { type: Type.STRING },
+                      pacingScore: { type: Type.INTEGER }
+                    },
+                    required: ["rating", "confidence", "speechRateText", "pacingScore"]
+                  },
+                  nextQuestion: { type: Type.STRING },
+                  explanation: { type: Type.STRING }
+                },
+                required: ["evaluation", "nextQuestion", "explanation"]
+              }
+            }
+          });
+          const text = response.text;
+          questionResult = text ? JSON.parse(text) : getProceduralInterviewResponse(role, currentQuestion, userAnswer, false);
+        } catch (e) {
+          questionResult = getProceduralInterviewResponse(role, currentQuestion, userAnswer, false);
+        }
+      }
+
+      // Save question answer details
+      if (currentQuestion) {
+        const lastQuestion = await prisma.interviewQuestion.findFirst({
+          where: { sessionId: session.id, questionText: currentQuestion }
+        });
+        if (lastQuestion) {
+          await prisma.interviewQuestion.update({
+            where: { id: lastQuestion.id },
+            data: {
+              answerText: userAnswer || "",
+              rating: questionResult.evaluation?.rating || 80,
+              confidence: questionResult.evaluation?.confidence || "Medium",
+              feedbackText: questionResult.explanation || ""
+            }
+          });
+        } else {
+          await prisma.interviewQuestion.create({
+            data: {
+              sessionId: session.id,
+              questionText: currentQuestion,
+              answerText: userAnswer || "",
+              rating: questionResult.evaluation?.rating || 80,
+              confidence: questionResult.evaluation?.confidence || "Medium",
+              feedbackText: questionResult.explanation || ""
+            }
+          });
+        }
+      }
+
+      // Pre-create the next question record
+      await prisma.interviewQuestion.create({
+        data: {
+          sessionId: session.id,
+          questionText: questionResult.nextQuestion
         }
       });
 
-      const text = response.text;
-      if (text) {
-        return res.json(JSON.parse(text));
-      }
+      return res.json({
+        sessionId: session.id,
+        ...questionResult
+      });
     }
-    throw new Error("Unable to obtain text from interview request");
-  } catch (error) {
-    console.log("[Gemini] Interview coach falling back to procedural prompt due to transient API state.");
-    return res.json(getProceduralInterviewResponse(role, currentQuestion, userAnswer, isEnding));
+  } catch (error: any) {
+    console.error("Interview coach failed:", error);
+    const procedural = getProceduralInterviewResponse(role, currentQuestion, userAnswer, isEnding);
+    return res.json({
+      sessionId: activeSessionId,
+      ...procedural
+    });
   }
 });
 

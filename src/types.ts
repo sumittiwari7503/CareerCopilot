@@ -47,6 +47,7 @@ export interface InterviewEvaluation {
 }
 
 export interface InterviewQuestionResponse {
+  sessionId?: string;
   evaluation: InterviewEvaluation;
   nextQuestion: string;
   explanation: string;

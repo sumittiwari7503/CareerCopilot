@@ -177,12 +177,13 @@ export async function submitInterviewAnswerAPI(
   userAnswer: string, 
   type: string,
   difficulty: string,
+  sessionId: string | null,
   token: string | null
 ): Promise<InterviewQuestionResponse> {
   const res = await fetch("/api/mock-interview/question", {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ role, currentQuestion, userAnswer, type, difficulty })
+    body: JSON.stringify({ role, currentQuestion, userAnswer, type, difficulty, sessionId })
   });
   if (!res.ok) {
     throw new Error(`Failed to submit answer: ${res.statusText}`);
@@ -194,12 +195,13 @@ export async function endInterviewSessionAPI(
   role: string, 
   type: string,
   difficulty: string,
+  sessionId: string | null,
   token: string | null
 ): Promise<InterviewSummary> {
   const res = await fetch("/api/mock-interview/question", {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ role, isEnding: true, type, difficulty })
+    body: JSON.stringify({ role, isEnding: true, type, difficulty, sessionId })
   });
   if (!res.ok) {
     throw new Error(`Failed to end session: ${res.statusText}`);
@@ -291,6 +293,36 @@ export async function updateRoadmapTasksAPI(id: string, checkedTasks: Record<str
   });
   if (!res.ok) {
     throw new Error(`Failed to update checklist tasks: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchLatestResumeAPI(token: string | null): Promise<{ id: string; text: string; analysis: ResumeAnalysis | null } | null> {
+  const res = await fetch("/api/resume/latest", {
+    method: "GET",
+    headers: getHeaders(token)
+  });
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error(`Failed to fetch latest resume: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function applyResumeFixAPI(
+  title: string,
+  description: string,
+  evidenceDetail: string,
+  resumeText: string,
+  token: string | null
+): Promise<{ before: string; after: string }> {
+  const res = await fetch("/api/resume/apply-fix", {
+    method: "POST",
+    headers: getHeaders(token),
+    body: JSON.stringify({ title, description, evidenceDetail, resumeText })
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to apply resume fix: ${res.statusText}`);
   }
   return res.json();
 }

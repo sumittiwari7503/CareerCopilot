@@ -29,6 +29,7 @@ interface InterviewPageProps {
   showSummary: boolean;
   interviewSummary: InterviewSummary | null;
   resetInterviewState: () => void;
+  onInitiateInterview: () => void;
 }
 
 export default function InterviewPage({
@@ -51,7 +52,8 @@ export default function InterviewPage({
   conversationHistory,
   showSummary,
   interviewSummary,
-  resetInterviewState
+  resetInterviewState,
+  onInitiateInterview
 }: InterviewPageProps) {
   const roleOptions = [
     { value: "Senior Frontend Engineer", label: "Senior Frontend Engineer" },
@@ -125,7 +127,8 @@ export default function InterviewPage({
           </div>
 
           <Button
-            onClick={() => setInterviewActive(true)}
+            onClick={onInitiateInterview}
+            loading={isSubmittingAnswer}
             variant="secondary"
             className="w-full max-w-xs py-3 font-bold bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-none shadow-lg shadow-[#8b5cf6]/20"
             icon={<Play className="w-4 h-4 fill-white" />}

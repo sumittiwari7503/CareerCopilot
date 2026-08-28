@@ -1,11 +1,12 @@
-import React from "react";
-import { FileText, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
+import React, { useState } from "react";
+import { FileText, Sparkles, AlertTriangle, RefreshCw, X, Check, Edit2, Download } from "lucide-react";
 import { ResumeAnalysis } from "../../types";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Score from "../../components/ui/Score";
 import Textarea from "../../components/ui/Textarea";
+import { jsPDF } from "jspdf";
 
 interface ResumePageProps {
   resumeText: string;
@@ -14,6 +15,7 @@ interface ResumePageProps {
   isAnalyzingResume: boolean;
   analysisResult: ResumeAnalysis | null;
   targetRole: string;
+  applyResumeFix: (suggestion: any) => Promise<{ before: string; after: string }>;
 }
 
 export default function ResumePage({
@@ -22,8 +24,147 @@ export default function ResumePage({
   handleCustomResumeAnalyze,
   isAnalyzingResume,
   analysisResult,
-  targetRole
+  targetRole,
+  applyResumeFix
 }: ResumePageProps) {
+  // Modal states for Apply Fix
+  const [activeSuggestion, setActiveSuggestion] = useState<any | null>(null);
+  const [loadingFix, setLoadingFix] = useState(false);
+  const [fixResult, setFixResult] = useState<{ before: string; after: string } | null>(null);
+  const [editedAfterText, setEditedAfterText] = useState("");
+  const [fixError, setFixError] = useState<string | null>(null);
+
+  // Trigger AI Bullet Optimization
+  const handleTriggerFix = async (suggestion: any) => {
+    setActiveSuggestion(suggestion);
+    setLoadingFix(true);
+    setFixResult(null);
+    setFixError(null);
+    try {
+      const result = await applyResumeFix(suggestion);
+      setFixResult(result);
+      setEditedAfterText(result.after);
+    } catch (err: any) {
+      setFixError(err.message || "Failed to generate AI rewrite proposal. Please try again.");
+    } finally {
+      setLoadingFix(false);
+    }
+  };
+
+  // Accept and apply the fix
+  const handleAcceptFix = () => {
+    if (!fixResult) return;
+    const originalText = resumeText;
+    const beforeText = fixResult.before.trim();
+    const afterText = editedAfterText.trim();
+
+    if (originalText.includes(beforeText)) {
+      const updated = originalText.replace(beforeText, afterText);
+      setResumeText(updated);
+      // Automatically trigger a recheck / analysis resync
+      setTimeout(() => {
+        handleCustomResumeAnalyze();
+      }, 100);
+    } else {
+      // Direct replacement failed due to whitespace/formatting. Fallback to appending or general alert
+      alert("Could not locate the exact original text block inside your resume to replace. Please copy the fix text manually and apply.");
+    }
+    handleCloseModal();
+  };
+
+  const handleCloseModal = () => {
+    setActiveSuggestion(null);
+    setFixResult(null);
+    setEditedAfterText("");
+    setFixError(null);
+  };
+
+  // jsPDF single column ATS friendly format generator
+  const handleDownloadPDF = () => {
+    if (!resumeText.trim()) return;
+    
+    const doc = new jsPDF("p", "mm", "a4");
+    doc.setFont("helvetica", "normal");
+    
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - 2 * margin;
+    
+    let y = 20;
+    const lines = resumeText.split("\n");
+    
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        y += 4; // blank line space
+        return;
+      }
+      
+      if (y > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+      
+      if (idx === 0) {
+        // Main Name header
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.text(trimmed, pageWidth / 2, y, { align: "center" });
+        y += 8;
+        doc.setFont("helvetica", "normal");
+      } else if (idx === 1 && (trimmed.includes("@") || trimmed.includes("|") || trimmed.includes("/") || trimmed.length < 100)) {
+        // Contact details subtitle
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(trimmed, pageWidth / 2, y, { align: "center" });
+        y += 8;
+      } else if (
+        trimmed === trimmed.toUpperCase() && 
+        trimmed.length < 30 && 
+        !trimmed.startsWith("-") && 
+        !trimmed.startsWith("*")
+      ) {
+        // Section Header
+        y += 4;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(trimmed, margin, y);
+        
+        // Horizontal rule
+        y += 2;
+        doc.setDrawColor(75, 85, 99); // borders grey
+        doc.setLineWidth(0.2);
+        doc.line(margin, y, pageWidth - margin, y);
+        
+        y += 6;
+        doc.setFont("helvetica", "normal");
+      } else {
+        // Body details
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        
+        const splitText = doc.splitTextToSize(trimmed, contentWidth);
+        splitText.forEach((t: string) => {
+          if (y > pageHeight - 20) {
+            doc.addPage();
+            y = 20;
+          }
+          
+          if (t.startsWith("- ") || t.startsWith("* ")) {
+            doc.text(t, margin + 2, y);
+          } else {
+            doc.text(t, margin, y);
+          }
+          y += 5.5;
+        });
+      }
+    });
+    
+    const safeName = targetRole.replace(/\s+/g, "_") || "ATS_Optimized";
+    doc.save(`${safeName}_Resume.pdf`);
+  };
+
   return (
     <div className="space-y-8">
       
@@ -42,9 +183,19 @@ export default function ResumePage({
         {/* Editor input block (2/5 width) */}
         <div className="lg:col-span-2 space-y-4">
           <Card className="p-6 space-y-4">
-            <h3 className="text-xs uppercase font-extrabold text-white tracking-wider pb-2 border-b border-white/5">
-              Resume Source Text
-            </h3>
+            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+              <h3 className="text-xs uppercase font-extrabold text-white tracking-wider">
+                Resume Source Text
+              </h3>
+              {resumeText.trim() && (
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="text-[10px] text-[#10B981] hover:underline flex items-center gap-1 font-mono uppercase font-bold"
+                >
+                  <Download className="w-3 h-3" /> PDF Export
+                </button>
+              )}
+            </div>
             
             <div className="space-y-3">
               <Textarea 
@@ -125,6 +276,28 @@ export default function ResumePage({
                         <span className="font-bold text-gray-500 uppercase tracking-widest text-[8px] font-mono block">Context / Proof Detail</span>
                         <p className="italic">"{s.evidenceDetail || "No matching proof details detected in resume source."}"</p>
                       </div>
+
+                      <div className="flex justify-end pt-2">
+                        {s.actionText === "Apply Fix" ? (
+                          <Button 
+                            onClick={() => handleTriggerFix(s)}
+                            variant="secondary"
+                            className="text-[10px] py-1 px-3 bg-[#2563EB] hover:bg-[#1d4ed8] text-white flex items-center gap-1 border-none font-bold uppercase tracking-wider"
+                            icon={<Sparkles className="w-3 h-3" />}
+                          >
+                            Apply AI Fix
+                          </Button>
+                        ) : s.actionText === "Format PDF" ? (
+                          <Button 
+                            onClick={handleDownloadPDF}
+                            variant="outline"
+                            className="text-[10px] py-1 px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-1 font-bold uppercase tracking-wider"
+                            icon={<Download className="w-3 h-3" />}
+                          >
+                            Format PDF
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -152,6 +325,80 @@ export default function ResumePage({
         </div>
 
       </div>
+
+      {/* AI Bullet optimization Modal */}
+      {activeSuggestion && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <Card className="w-full max-w-xl p-6 border border-white/10 shadow-2xl space-y-5 bg-[#0e1320] text-gray-200">
+            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+              <h3 className="text-xs uppercase tracking-widest font-extrabold text-white flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#a78bfa] animate-pulse" /> AI Resume Bullet Optimization
+              </h3>
+              <button onClick={handleCloseModal} className="text-gray-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {loadingFix && (
+              <div className="py-12 flex flex-col justify-center items-center space-y-3 text-xs text-gray-400">
+                <RefreshCw className="w-8 h-8 text-[#2563EB] animate-spin" />
+                <p>Generating optimized text utilizing technical metrics...</p>
+              </div>
+            )}
+
+            {fixError && (
+              <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-xl text-xs text-red-300 space-y-2">
+                <p className="font-bold">Optimization Error</p>
+                <p className="text-[11px]">{fixError}</p>
+                <Button onClick={() => handleTriggerFix(activeSuggestion)} variant="outline" className="py-1.5 px-3 border-red-500/30 hover:bg-red-500/10 text-red-300">
+                  Retry Call
+                </Button>
+              </div>
+            )}
+
+            {fixResult && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Suggestion Focus</h4>
+                  <p className="text-xs font-bold text-white">{activeSuggestion.title}</p>
+                  <p className="text-[11px] text-gray-300">{activeSuggestion.description}</p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Before card */}
+                  <div className="space-y-1">
+                    <h5 className="text-[9px] uppercase tracking-wider font-extrabold text-red-400 font-mono">Before / Original</h5>
+                    <div className="p-3 bg-red-950/20 border border-red-900/30 rounded-xl text-[10.5px] leading-relaxed text-gray-300 italic min-h-[120px] select-all">
+                      "{fixResult.before}"
+                    </div>
+                  </div>
+
+                  {/* After card */}
+                  <div className="space-y-1">
+                    <h5 className="text-[9px] uppercase tracking-wider font-extrabold text-[#10B981] font-mono flex items-center gap-1">
+                      After / Optimized <Edit2 className="w-2.5 h-2.5" />
+                    </h5>
+                    <textarea
+                      value={editedAfterText}
+                      onChange={(e) => setEditedAfterText(e.target.value)}
+                      className="w-full p-3 bg-emerald-950/10 border border-emerald-500/25 rounded-xl text-[10.5px] leading-relaxed text-emerald-200 min-h-[120px] focus:outline-none focus:border-emerald-500 font-sans"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-3 border-t border-white/5">
+                  <Button onClick={handleCloseModal} variant="outline" className="text-[10px] py-2 px-4 uppercase tracking-wider font-bold">
+                    Discard
+                  </Button>
+                  <Button onClick={handleAcceptFix} variant="primary" className="text-[10px] py-2 px-4 uppercase tracking-wider font-bold bg-[#10B981] hover:bg-[#059669] border-none text-white flex items-center gap-1" icon={<Check className="w-3.5 h-3.5" />}>
+                    Accept & Scan
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
     </div>
   );

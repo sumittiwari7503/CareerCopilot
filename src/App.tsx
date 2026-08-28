@@ -56,7 +56,9 @@ import {
   generateProjectRecommendationsAPI,
   fetchCareerPlanAPI,
   generateCareerPlanAPI,
-  updateRoadmapTasksAPI
+  updateRoadmapTasksAPI,
+  fetchLatestResumeAPI,
+  applyResumeFixAPI
 } from "./services/apiService";
 
 // Fallbacks
@@ -99,29 +101,12 @@ function MainApp() {
   const [timeAvailable, setTimeAvailable] = useState("2 hours");
   const [currentSkills, setCurrentSkills] = useState<string[]>([]);
 
-  const [resumeText, setResumeText] = useState("Alex Rivera\nSenior Web Developer\nSkills: React, TypeScript, Node.js\nExperience: Built modular micro frontend states. Reduced response loops by 40%.");
+  const [resumeText, setResumeText] = useState("");
   const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<ResumeAnalysis | null>({
-    atsScore: 85,
-    compatibilityText: "Good compatibility",
-    missingKeywords: ["Docker", "GraphQL", "Kubernetes", "CI/CD Pipelines"],
-    suggestions: [
-      {
-        type: "quantify",
-        title: "Quantify Achievements",
-        description: 'In "Project X", instead of "improved performance", explain specifically "optimized query speeds by 40% using Redis caching".',
-        actionText: "Apply Fix"
-      },
-      {
-        type: "alert",
-        title: "Formatting Alert",
-        description: "Your multi-column layout may cause issues with some legacy ATS systems. Consider a single-column layout.",
-        actionText: "Format PDF"
-      }
-    ]
-  });
+  const [analysisResult, setAnalysisResult] = useState<ResumeAnalysis | null>(null);
 
   const [interviewActive, setInterviewActive] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState("Tell me about a time you optimized app performance. What were the metrics, and how did you measure success?");
   const [userAnswer, setUserAnswer] = useState("");
   const [interviewRole, setInterviewRole] = useState("Senior Frontend Engineer");
@@ -205,6 +190,20 @@ function MainApp() {
         // Fetch Applications
         const dbJobs = await fetchApplicationsAPI(token);
         setJobs(dbJobs);
+
+        // Fetch Latest Resume
+        try {
+          const resObj = await fetchLatestResumeAPI(token);
+          if (resObj) {
+            setResumeText(resObj.text);
+            setAnalysisResult(resObj.analysis);
+          } else {
+            setResumeText("");
+            setAnalysisResult(null);
+          }
+        } catch (resErr) {
+          console.error("Error loading latest resume:", resErr);
+        }
 
         // Fetch Active Career Plan
         try {
@@ -369,21 +368,33 @@ function MainApp() {
 
   const generateRoadmap = async () => {
     setGeneratingRoadmap(true);
-    let success = false;
     try {
       const token = await getAccessToken();
-      const data = await generateRoadmapAPI(targetRole, duration, skillLevel, token);
-      setRoadmap(data);
-      success = true;
-    } catch (err) {
-      console.error("API Error - falling back to client procedural generation:", err);
-    }
+      
+      // Update target settings on the server first
+      await updateProfileAPI({
+        targetRole,
+        targetTimeline: duration,
+        experienceLevel: skillLevel === "Beginner" ? "Fresher" : "1-2 years"
+      }, token);
 
-    if (!success) {
-      const data = getProceduralRoadmap(targetRole, duration, skillLevel);
-      setRoadmap(data);
+      // Generate & persist plan
+      const plan = await generateCareerPlanAPI(token);
+      setRoadmap(plan);
+      setCheckedTasks(plan.checkedTasks || {});
+      
+      // Update today action item
+      try {
+        const action = await fetchTodayActionAPI(token);
+        setTodayAction(action);
+      } catch (_) {}
+    } catch (err) {
+      console.error("Error generating persistent roadmap:", err);
+      const fallbackPlan = getProceduralRoadmap(targetRole, duration, skillLevel);
+      setRoadmap(fallbackPlan as any);
+    } finally {
+      setGeneratingRoadmap(false);
     }
-    setGeneratingRoadmap(false);
   };
 
   const handleCompleteAction = async (actionId: string) => {
@@ -437,6 +448,47 @@ function MainApp() {
     setIsAnalyzingResume(false);
   };
 
+  const handleApplyResumeFix = async (suggestion: any) => {
+    const token = await getAccessToken();
+    return await applyResumeFixAPI(
+      suggestion.title,
+      suggestion.description,
+      suggestion.evidenceDetail,
+      resumeText,
+      token
+    );
+  };
+
+  const handleInitiateInterview = async () => {
+    setConversationHistory([]);
+    setLatestEvaluation(null);
+    setShowSummary(false);
+    setInterviewSummary(null);
+    setSessionId(null);
+    setIsSubmittingAnswer(true);
+    setInterviewActive(true);
+
+    try {
+      const token = await getAccessToken();
+      const data = await submitInterviewAnswerAPI(
+        interviewRole,
+        "",
+        "",
+        interviewType,
+        interviewDifficulty,
+        null,
+        token
+      );
+      setSessionId(data.sessionId);
+      setCurrentQuestion(data.nextQuestion);
+    } catch (err) {
+      console.error("Failed to initiate interview dynamically, falling back to static question:", err);
+      setCurrentQuestion("Tell me about a time you optimized app performance. What were the metrics, and how did you measure success?");
+    } finally {
+      setIsSubmittingAnswer(false);
+    }
+  };
+
   const submitInterviewAnswer = async () => {
     const cleanAnswer = userAnswer.trim();
     if (!cleanAnswer) return;
@@ -444,7 +496,15 @@ function MainApp() {
     let success = false;
     try {
       const token = await getAccessToken();
-      const data = await submitInterviewAnswerAPI(interviewRole, currentQuestion, cleanAnswer, interviewType, interviewDifficulty, token);
+      const data = await submitInterviewAnswerAPI(
+        interviewRole,
+        currentQuestion,
+        cleanAnswer,
+        interviewType,
+        interviewDifficulty,
+        sessionId,
+        token
+      );
       
       setConversationHistory(prev => [
         ...prev,
@@ -486,7 +546,13 @@ function MainApp() {
     let success = false;
     try {
       const token = await getAccessToken();
-      const data = await endInterviewSessionAPI(interviewRole, interviewType, interviewDifficulty, token);
+      const data = await endInterviewSessionAPI(
+        interviewRole,
+        interviewType,
+        interviewDifficulty,
+        sessionId,
+        token
+      );
       setInterviewSummary(data);
       setShowSummary(true);
       
@@ -699,6 +765,7 @@ function MainApp() {
             isAnalyzingResume={isAnalyzingResume} 
             analysisResult={analysisResult} 
             targetRole={targetRole}
+            applyResumeFix={handleApplyResumeFix}
           />
         )}
 
@@ -724,6 +791,7 @@ function MainApp() {
             showSummary={showSummary} 
             interviewSummary={interviewSummary} 
             resetInterviewState={resetInterviewState} 
+            onInitiateInterview={handleInitiateInterview}
           />
         )}
 
