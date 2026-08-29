@@ -144,10 +144,7 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     return res.json(updated);
   } catch (err: any) {
     console.error("Error updating profile:", err);
-    const dbErrDetail = err.message ? err.message.slice(0, 150) : String(err);
-    return res.status(500).json({ 
-      error: `Internal server error updating profile: ${dbErrDetail} [Code: ${err.code || 'none'}]`
-    });
+    return res.status(500).json({ error: "Internal server error updating profile" });
   }
 });
 
