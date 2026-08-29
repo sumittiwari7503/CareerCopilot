@@ -13,6 +13,8 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string) => Promise<any>;
+  resendVerificationEmail: (email: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -264,6 +266,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const verifyEmailOtp = async (email: string, token: string) => {
+    setLoading(true);
+    try {
+      if (isPlaceholderSupabase) {
+        if (token.length !== 6) throw new Error("Invalid verification code format.");
+        const mockSessionStr = localStorage.getItem("mock_session");
+        if (!mockSessionStr) throw new Error("Verification session not found.");
+        const parsed = JSON.parse(mockSessionStr);
+        setSession(parsed.session);
+        setUser(parsed.user);
+        return { session: parsed.session, user: parsed.user };
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "signup"
+      });
+      if (error) throw error;
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    setLoading(true);
+    try {
+      if (isPlaceholderSupabase) {
+        console.log("Mock resend verification to:", email);
+        return;
+      }
+      const { data, error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -275,7 +323,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getAccessToken, 
       signInWithGoogle, 
       resetPassword, 
-      updatePassword 
+      updatePassword,
+      verifyEmailOtp,
+      resendVerificationEmail
     }}>
       {children}
     </AuthContext.Provider>

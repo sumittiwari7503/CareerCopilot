@@ -7,7 +7,7 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 
 export default function SignUpPage() {
-  const { signUp } = useAuth();
+  const { signUp, verifyEmailOtp, resendVerificationEmail } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,6 +17,25 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState(false);
   const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Verification states
+  const [verificationCode, setVerificationCode] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+
+  // Manage resend cooldown timer
+  React.useEffect(() => {
+    let interval: any;
+    if (resendCooldown > 0) {
+      interval = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,35 +74,141 @@ export default function SignUpPage() {
     }
   };
 
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (verificationCode.length !== 6) {
+      setVerificationError("Please enter a valid 6-digit verification code.");
+      return;
+    }
+    setVerificationError(null);
+    setVerificationLoading(true);
+
+    try {
+      await verifyEmailOtp(email, verificationCode);
+      setVerificationSuccess(true);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+    } catch (err: any) {
+      console.error("Verification failed:", err);
+      let errMsg = err.message || "Invalid verification code. Please check and try again.";
+      if (errMsg.toLowerCase().includes("otp has expired")) {
+        errMsg = "Verification code has expired. Please request a new one.";
+      }
+      setVerificationError(errMsg);
+    } finally {
+      setVerificationLoading(true); // Keep loading verified true until redirected
+      setVerificationLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+    setVerificationError(null);
+    setResendLoading(true);
+    try {
+      await resendVerificationEmail(email);
+      setResendCooldown(60);
+    } catch (err: any) {
+      console.error("Resend failed:", err);
+      setVerificationError(err.message || "Failed to resend verification email. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   if (success && emailConfirmationRequired) {
     return (
       <div className="min-h-screen bg-[#0b0f19] text-gray-200 flex items-center justify-center p-4">
-        <Card variant="elevated" className="w-full max-w-sm border-white/10 shadow-2xl space-y-6 text-center py-8">
+        <Card variant="elevated" className="w-full max-w-sm border-white/10 shadow-2xl space-y-6 py-6 px-5 text-center">
           <div className="flex items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#4F46E5] flex items-center justify-center border border-white/15">
-              <CheckCircle className="w-6 h-6 text-emerald-400" />
+              <Compass className="w-6 h-6 text-white animate-pulse" />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-base font-bold uppercase tracking-wider text-white">
+          <div className="space-y-1.5">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white">
               Confirm Your Email
             </h2>
-            <p className="text-[12px] text-gray-300">
-              An activation link has been sent to <strong className="text-white">{email}</strong>.
-            </p>
             <p className="text-[11px] text-gray-400">
-              Please click the link in the email to complete registration and unlock your Career OS workspace.
+              We sent a verification link & code to:
+            </p>
+            <p className="text-[11px] text-[#60a5fa] font-bold font-mono">
+              {email}
             </p>
           </div>
 
-          <div className="border-t border-white/5 pt-6">
-            <Link
-              to="/login"
-              className="block w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] rounded-xl text-xs font-bold text-white uppercase tracking-wider transition-all"
+          {verificationError && (
+            <div className="bg-red-500/10 border border-red-500/25 p-2.5 rounded-xl text-[11px] text-red-300 text-left flex gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+              <span>{verificationError}</span>
+            </div>
+          )}
+
+          {verificationSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/25 p-2.5 rounded-xl text-[11px] text-emerald-300 text-left flex gap-2">
+              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+              <span>Email verified successfully! Syncing workspace...</span>
+            </div>
+          )}
+
+          <form onSubmit={handleVerifyOtp} className="space-y-3">
+            <div className="text-left space-y-1">
+              <label className="text-[9px] uppercase font-mono text-gray-400 font-bold block">Verification Code / OTP</label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="123456"
+                className="w-full text-center tracking-widest font-mono font-bold text-white bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 focus:border-[#60a5fa] focus:ring-1 focus:ring-[#60a5fa] outline-none text-sm transition-all"
+                disabled={verificationLoading || verificationSuccess}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              loading={verificationLoading}
+              variant="primary"
+              className="w-full py-2 font-bold uppercase tracking-wider text-[11px]"
+              disabled={verificationLoading || verificationSuccess}
             >
-              Go to Sign In
-            </Link>
+              Verify Email
+            </Button>
+          </form>
+
+          <div className="space-y-2.5 border-t border-white/5 pt-4">
+            <button
+              onClick={handleResend}
+              disabled={resendCooldown > 0 || resendLoading || verificationSuccess}
+              className="text-[11px] text-gray-400 hover:text-white font-bold transition-all disabled:opacity-50"
+            >
+              {resendLoading ? "Sending..." : resendCooldown > 0 ? `Resend Code (${resendCooldown}s)` : "Resend Verification Code"}
+            </button>
+
+            <div className="flex justify-center gap-4 text-[10px] text-gray-500">
+              <button
+                onClick={() => {
+                  setSuccess(false);
+                  setEmailConfirmationRequired(false);
+                  setVerificationCode("");
+                  setVerificationError(null);
+                }}
+                disabled={verificationLoading || verificationSuccess}
+                className="hover:underline font-semibold"
+              >
+                Change Email
+              </button>
+              <span>•</span>
+              <Link
+                to="/login"
+                className="hover:underline font-semibold text-gray-500"
+              >
+                Back to Sign In
+              </Link>
+            </div>
           </div>
         </Card>
       </div>
