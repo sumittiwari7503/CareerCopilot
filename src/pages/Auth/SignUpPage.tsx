@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,11 +36,17 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      await signUp(email, password, fullName);
-      setSuccess(true);
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
+      const data = await signUp(email, password, fullName);
+      
+      // If email confirmation is enabled, session is null but user is created
+      if (data && data.user && !data.session) {
+        setEmailConfirmationRequired(true);
+        setSuccess(true);
+      } else {
+        // Immediately logged in (email confirmation disabled)
+        setSuccess(true);
+        navigate("/dashboard");
+      }
     } catch (err: any) {
       console.error("Signup failed:", err);
       setError(err.message || "Registration failed. Try a different email.");
@@ -47,6 +54,41 @@ export default function SignUpPage() {
       setLoading(false);
     }
   };
+
+  if (success && emailConfirmationRequired) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] text-gray-200 flex items-center justify-center p-4">
+        <Card variant="elevated" className="w-full max-w-sm border-white/10 shadow-2xl space-y-6 text-center py-8">
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#4F46E5] flex items-center justify-center border border-white/15">
+              <CheckCircle className="w-6 h-6 text-emerald-400" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-base font-bold uppercase tracking-wider text-white">
+              Confirm Your Email
+            </h2>
+            <p className="text-[12px] text-gray-300">
+              An activation link has been sent to <strong className="text-white">{email}</strong>.
+            </p>
+            <p className="text-[11px] text-gray-400">
+              Please click the link in the email to complete registration and unlock your Career OS workspace.
+            </p>
+          </div>
+
+          <div className="border-t border-white/5 pt-6">
+            <Link
+              to="/login"
+              className="block w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] rounded-xl text-xs font-bold text-white uppercase tracking-wider transition-all"
+            >
+              Go to Sign In
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-gray-200 flex items-center justify-center p-4">

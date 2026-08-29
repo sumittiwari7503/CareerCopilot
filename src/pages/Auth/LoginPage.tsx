@@ -28,7 +28,13 @@ export default function LoginPage() {
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Login failed:", err);
-      setError(err.message || "Failed to log in. Please check your credentials.");
+      let friendlyError = err.message || "Failed to log in. Please check your credentials.";
+      if (friendlyError.toLowerCase().includes("email not confirmed")) {
+        friendlyError = "Your email address has not been verified yet. Please check your inbox for the activation link.";
+      } else if (friendlyError.toLowerCase().includes("invalid login credentials")) {
+        friendlyError = "Invalid email or password. Please verify your credentials.";
+      }
+      setError(friendlyError);
     } finally {
       setLoading(false);
     }
