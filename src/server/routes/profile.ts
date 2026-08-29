@@ -13,6 +13,14 @@ async function ensureProfileExists(userId: string, email: string) {
     // Ensure the corresponding User record exists in Postgres (required for foreign key constraints)
     let dbUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!dbUser) {
+      if (email) {
+        const existingUserByEmail = await prisma.user.findUnique({ where: { email } });
+        if (existingUserByEmail) {
+          console.warn(`[ensureProfileExists] Email conflict: User with email ${email} already exists with ID ${existingUserByEmail.id}. Deleting stale user record to allow new ID registration.`);
+          await prisma.user.delete({ where: { id: existingUserByEmail.id } });
+        }
+      }
+
       dbUser = await prisma.user.create({
         data: {
           id: userId,

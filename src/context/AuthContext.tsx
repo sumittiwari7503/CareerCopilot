@@ -126,6 +126,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
       if (error) throw error;
+      
+      // Explicitly commit session to state immediately to avoid routing race conditions
+      if (data && data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+      } else if (data && data.user) {
+        setUser(data.user);
+      }
       return data;
     } finally {
       setLoading(false);
@@ -174,6 +182,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password
       });
       if (error) throw error;
+
+      // Explicitly commit session to state immediately to avoid routing race conditions
+      if (data && data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+      }
       return data;
     } finally {
       setLoading(false);

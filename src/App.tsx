@@ -812,6 +812,15 @@ function MainApp() {
   };
 
   // Auth/Session views gates
+  if (!profileLoaded) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
+        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
+        Synchronizing workspace profile...
+      </div>
+    );
+  }
+
   if (!onboardingCompleted) {
     return <OnboardingPage onComplete={handleOnboardingComplete} loading={onboardingLoading} />;
   }
