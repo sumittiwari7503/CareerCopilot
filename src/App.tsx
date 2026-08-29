@@ -250,7 +250,7 @@ function MainApp() {
 
   // 2. Debounced Profile Persistence (Syncs all settings/onboarding targets)
   useEffect(() => {
-    if (!user || !profileLoaded) return;
+    if (!user || !profileLoaded || !onboardingCompleted) return;
 
     const delayDebounce = setTimeout(async () => {
       try {
@@ -314,6 +314,40 @@ function MainApp() {
       console.error("Failed to persist checked tasks:", err);
       // Revert local state on error
       setCheckedTasks(checkedTasks);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Reset all states
+      setProfileLoaded(false);
+      setPersonalName("");
+      setPersonalEmail("");
+      setUserLevel("L5");
+      setEasySolved(0);
+      setMediumSolved(0);
+      setHardSolved(0);
+      setStreakDays(0);
+      setDailyScore(0);
+      setTargetRole("Software Engineer");
+      setTargetCompany("");
+      setCompanyType("");
+      setSpecialization("");
+      setExperienceLevel("");
+      setDuration(3);
+      setTimeAvailable("2 hours");
+      setOnboardingCompleted(false);
+      setRoadmap(null);
+      setCheckedTasks({});
+      setResumeText("");
+      setAnalysisResult(null);
+      setTodayAction(null);
+      setProjectRecommendations([]);
+      setDsaProblems([]);
+      setJobs([]);
+    } catch (err) {
+      console.error("Logout failed:", err);
     }
   };
 
@@ -390,11 +424,7 @@ function MainApp() {
     }
   };
 
-  useEffect(() => {
-    if (onboardingCompleted) {
-      generateRoadmap();
-    }
-  }, [onboardingCompleted]);
+
 
   const generateRoadmap = async () => {
     setGeneratingRoadmap(true);
@@ -812,7 +842,7 @@ function MainApp() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE SECURED SESSION
             </span>
             <button 
-              onClick={() => signOut()}
+              onClick={() => handleSignOut()}
               className="flex items-center gap-1.5 px-3.5 py-1 text-xs text-gray-400 hover:text-white font-bold transition-colors"
             >
               <LogOut className="w-4 h-4" /> Exit Setup

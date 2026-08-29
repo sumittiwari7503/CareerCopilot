@@ -42,24 +42,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Check initial active session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
-    }).catch(err => {
-      console.error("Supabase getSession error:", err);
-      setLoading(false);
-    });
+    let isMounted = true;
+
+    // Check initial active session once
+    const checkSession = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (isMounted) {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+        }
+      } catch (err) {
+        console.error("Supabase getSession error:", err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    checkSession();
 
     // Listen to changes in auth state (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (isMounted) {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        // Only set loading to false if this is a real user state change event
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+          setLoading(false);
+        }
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
