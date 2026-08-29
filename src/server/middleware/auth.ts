@@ -27,27 +27,13 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
 
     const kid = decoded.header.kid;
     const iss = decoded.payload.iss;
+    const alg = decoded.header.alg;
 
     let userId: string;
     let email: string | undefined;
 
-    if (kid) {
-      // Asymmetric token verification (e.g. ES256, RS256 via JWKS)
-      if (!iss) {
-        throw new Error("Missing issuer (iss) claim in token payload");
-      }
-      
-      const JWKS = jose.createRemoteJWKSet(new URL(`${iss}/.well-known/jwks.json`));
-      
-      const { payload } = await jose.jwtVerify(token, JWKS, {
-        audience: "authenticated",
-        algorithms: ["ES256", "RS256"] // Explicitly allow only supported asymmetric algorithms
-      });
-      
-      userId = payload.sub as string;
-      email = payload.email as string | undefined;
-    } else {
-      // Symmetric token verification (fallback to HS256)
+    if (alg === "HS256") {
+      // Symmetric token verification (HS256)
       if (!jwtSecret) {
         throw new Error("SUPABASE_JWT_SECRET environment variable is missing on the server");
       }
@@ -62,6 +48,23 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
 
       userId = payload.sub;
       email = payload.email;
+    } else if (kid) {
+      // Asymmetric token verification (e.g. ES256, RS256 via JWKS)
+      if (!iss) {
+        throw new Error("Missing issuer (iss) claim in token payload");
+      }
+      
+      const JWKS = jose.createRemoteJWKSet(new URL(`${iss}/.well-known/jwks.json`));
+      
+      const { payload } = await jose.jwtVerify(token, JWKS, {
+        audience: "authenticated",
+        algorithms: ["ES256", "RS256"]
+      });
+      
+      userId = payload.sub as string;
+      email = payload.email as string | undefined;
+    } else {
+      throw new Error(`Unsupported token signature algorithm: ${alg}`);
     }
 
     req.user = {
