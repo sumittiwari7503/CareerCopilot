@@ -1,15 +1,5 @@
 import { PrismaClient } from "../prisma/client/index.js";
 import serverApp from "./server.cjs";
-import { exec } from "child_process";
-
-// Execute database migrations programmatically on serverless cold starts
-exec("npx prisma migrate deploy", (err, stdout, stderr) => {
-  if (err) {
-    console.error("Serverless database migration failed:", err);
-  } else {
-    console.log("Serverless database migration output:", stdout);
-  }
-});
 
 const prisma = new PrismaClient();
 const app = (serverApp as any).default || serverApp;
