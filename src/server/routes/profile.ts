@@ -79,7 +79,10 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     currentSkills,
     onboardingCompleted,
     dailyScore,
-    streakDays
+    streakDays,
+    careerProfile,
+    dsaProblems,
+    readinessHistory
   } = req.body;
 
   if (fullName !== undefined && (typeof fullName !== "string" || fullName.trim() === "")) {
@@ -90,14 +93,25 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
     // Ensure both User and Profile exist before attempting update (crucial for new OAuth registrations)
     await ensureProfileExists(userId, email);
 
-    // If currentSkills is stringified JSON, parse it to pass as a JSON object to Prisma
+    // Parse JSON strings if needed
     let parsedSkills = currentSkills;
     if (currentSkills !== undefined && typeof currentSkills === "string") {
-      try {
-        parsedSkills = JSON.parse(currentSkills);
-      } catch (e) {
-        parsedSkills = currentSkills;
-      }
+      try { parsedSkills = JSON.parse(currentSkills); } catch (e) { parsedSkills = currentSkills; }
+    }
+
+    let parsedCareerProfile = careerProfile;
+    if (careerProfile !== undefined && typeof careerProfile === "string") {
+      try { parsedCareerProfile = JSON.parse(careerProfile); } catch (e) { parsedCareerProfile = careerProfile; }
+    }
+
+    let parsedDsaProblems = dsaProblems;
+    if (dsaProblems !== undefined && typeof dsaProblems === "string") {
+      try { parsedDsaProblems = JSON.parse(dsaProblems); } catch (e) { parsedDsaProblems = dsaProblems; }
+    }
+
+    let parsedReadinessHistory = readinessHistory;
+    if (readinessHistory !== undefined && typeof readinessHistory === "string") {
+      try { parsedReadinessHistory = JSON.parse(readinessHistory); } catch (e) { parsedReadinessHistory = readinessHistory; }
     }
 
     // Timeline parsing check
@@ -120,7 +134,10 @@ router.put("/profile", requireAuth, async (req: AuthenticatedRequest, res: Respo
         ...(currentSkills !== undefined && { currentSkills: parsedSkills }),
         ...(onboardingCompleted !== undefined && { onboardingCompleted: !!onboardingCompleted }),
         ...(dailyScore !== undefined && { dailyScore: parseInt(dailyScore, 10) }),
-        ...(streakDays !== undefined && { streakDays: parseInt(streakDays, 10) })
+        ...(streakDays !== undefined && { streakDays: parseInt(streakDays, 10) }),
+        ...(careerProfile !== undefined && { careerProfile: parsedCareerProfile }),
+        ...(dsaProblems !== undefined && { dsaProblems: parsedDsaProblems }),
+        ...(readinessHistory !== undefined && { readinessHistory: parsedReadinessHistory })
       }
     });
 

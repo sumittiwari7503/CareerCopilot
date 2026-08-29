@@ -3361,6 +3361,9 @@ export namespace Prisma {
     timeAvailable: number
     currentSkills: number
     onboardingCompleted: number
+    careerProfile: number
+    dsaProblems: number
+    readinessHistory: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -3448,6 +3451,9 @@ export namespace Prisma {
     timeAvailable?: true
     currentSkills?: true
     onboardingCompleted?: true
+    careerProfile?: true
+    dsaProblems?: true
+    readinessHistory?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -3558,6 +3564,9 @@ export namespace Prisma {
     timeAvailable: string | null
     currentSkills: JsonValue
     onboardingCompleted: boolean
+    careerProfile: JsonValue | null
+    dsaProblems: JsonValue | null
+    readinessHistory: JsonValue | null
     createdAt: Date
     updatedAt: Date
     _count: ProfileCountAggregateOutputType | null
@@ -3600,6 +3609,9 @@ export namespace Prisma {
     timeAvailable?: boolean
     currentSkills?: boolean
     onboardingCompleted?: boolean
+    careerProfile?: boolean
+    dsaProblems?: boolean
+    readinessHistory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -3624,6 +3636,9 @@ export namespace Prisma {
     timeAvailable?: boolean
     currentSkills?: boolean
     onboardingCompleted?: boolean
+    careerProfile?: boolean
+    dsaProblems?: boolean
+    readinessHistory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -3648,6 +3663,9 @@ export namespace Prisma {
     timeAvailable?: boolean
     currentSkills?: boolean
     onboardingCompleted?: boolean
+    careerProfile?: boolean
+    dsaProblems?: boolean
+    readinessHistory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -3672,11 +3690,14 @@ export namespace Prisma {
     timeAvailable?: boolean
     currentSkills?: boolean
     onboardingCompleted?: boolean
+    careerProfile?: boolean
+    dsaProblems?: boolean
+    readinessHistory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "fullName" | "targetRole" | "targetLevel" | "streakDays" | "dailyScore" | "easySolved" | "mediumSolved" | "hardSolved" | "targetCompany" | "companyType" | "specialization" | "experienceLevel" | "targetTimeline" | "timeAvailable" | "currentSkills" | "onboardingCompleted" | "createdAt" | "updatedAt", ExtArgs["result"]["profile"]>
+  export type ProfileOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "fullName" | "targetRole" | "targetLevel" | "streakDays" | "dailyScore" | "easySolved" | "mediumSolved" | "hardSolved" | "targetCompany" | "companyType" | "specialization" | "experienceLevel" | "targetTimeline" | "timeAvailable" | "currentSkills" | "onboardingCompleted" | "careerProfile" | "dsaProblems" | "readinessHistory" | "createdAt" | "updatedAt", ExtArgs["result"]["profile"]>
   export type ProfileInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
   }
@@ -3711,6 +3732,9 @@ export namespace Prisma {
       timeAvailable: string | null
       currentSkills: Prisma.JsonValue
       onboardingCompleted: boolean
+      careerProfile: Prisma.JsonValue | null
+      dsaProblems: Prisma.JsonValue | null
+      readinessHistory: Prisma.JsonValue | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["profile"]>
@@ -4155,6 +4179,9 @@ export namespace Prisma {
     readonly timeAvailable: FieldRef<"Profile", 'String'>
     readonly currentSkills: FieldRef<"Profile", 'Json'>
     readonly onboardingCompleted: FieldRef<"Profile", 'Boolean'>
+    readonly careerProfile: FieldRef<"Profile", 'Json'>
+    readonly dsaProblems: FieldRef<"Profile", 'Json'>
+    readonly readinessHistory: FieldRef<"Profile", 'Json'>
     readonly createdAt: FieldRef<"Profile", 'DateTime'>
     readonly updatedAt: FieldRef<"Profile", 'DateTime'>
   }
@@ -7927,6 +7954,7 @@ export namespace Prisma {
     priorityFlag: number
     location: number
     appliedDate: number
+    meta: number
     createdAt: number
     _all: number
   }
@@ -7965,6 +7993,7 @@ export namespace Prisma {
     priorityFlag?: true
     location?: true
     appliedDate?: true
+    meta?: true
     createdAt?: true
     _all?: true
   }
@@ -8050,6 +8079,7 @@ export namespace Prisma {
     priorityFlag: boolean
     location: string | null
     appliedDate: Date | null
+    meta: JsonValue | null
     createdAt: Date
     _count: ApplicationCountAggregateOutputType | null
     _min: ApplicationMinAggregateOutputType | null
@@ -8079,6 +8109,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: boolean
     appliedDate?: boolean
+    meta?: boolean
     createdAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["application"]>
@@ -8092,6 +8123,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: boolean
     appliedDate?: boolean
+    meta?: boolean
     createdAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["application"]>
@@ -8105,6 +8137,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: boolean
     appliedDate?: boolean
+    meta?: boolean
     createdAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["application"]>
@@ -8118,10 +8151,11 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: boolean
     appliedDate?: boolean
+    meta?: boolean
     createdAt?: boolean
   }
 
-  export type ApplicationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "title" | "company" | "status" | "priorityFlag" | "location" | "appliedDate" | "createdAt", ExtArgs["result"]["application"]>
+  export type ApplicationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "title" | "company" | "status" | "priorityFlag" | "location" | "appliedDate" | "meta" | "createdAt", ExtArgs["result"]["application"]>
   export type ApplicationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
   }
@@ -8146,6 +8180,7 @@ export namespace Prisma {
       priorityFlag: boolean
       location: string | null
       appliedDate: Date | null
+      meta: Prisma.JsonValue | null
       createdAt: Date
     }, ExtArgs["result"]["application"]>
     composites: {}
@@ -8579,6 +8614,7 @@ export namespace Prisma {
     readonly priorityFlag: FieldRef<"Application", 'Boolean'>
     readonly location: FieldRef<"Application", 'String'>
     readonly appliedDate: FieldRef<"Application", 'DateTime'>
+    readonly meta: FieldRef<"Application", 'Json'>
     readonly createdAt: FieldRef<"Application", 'DateTime'>
   }
     
@@ -15870,6 +15906,9 @@ export namespace Prisma {
     timeAvailable: 'timeAvailable',
     currentSkills: 'currentSkills',
     onboardingCompleted: 'onboardingCompleted',
+    careerProfile: 'careerProfile',
+    dsaProblems: 'dsaProblems',
+    readinessHistory: 'readinessHistory',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -15921,6 +15960,7 @@ export namespace Prisma {
     priorityFlag: 'priorityFlag',
     location: 'location',
     appliedDate: 'appliedDate',
+    meta: 'meta',
     createdAt: 'createdAt'
   };
 
@@ -16028,6 +16068,14 @@ export namespace Prisma {
   };
 
   export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+  export const NullableJsonNullValueInput: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull
+  };
+
+  export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
   export const QueryMode: {
@@ -16235,6 +16283,9 @@ export namespace Prisma {
     timeAvailable?: StringNullableFilter<"Profile"> | string | null
     currentSkills?: JsonFilter<"Profile">
     onboardingCompleted?: BoolFilter<"Profile"> | boolean
+    careerProfile?: JsonNullableFilter<"Profile">
+    dsaProblems?: JsonNullableFilter<"Profile">
+    readinessHistory?: JsonNullableFilter<"Profile">
     createdAt?: DateTimeFilter<"Profile"> | Date | string
     updatedAt?: DateTimeFilter<"Profile"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -16259,6 +16310,9 @@ export namespace Prisma {
     timeAvailable?: SortOrderInput | SortOrder
     currentSkills?: SortOrder
     onboardingCompleted?: SortOrder
+    careerProfile?: SortOrderInput | SortOrder
+    dsaProblems?: SortOrderInput | SortOrder
+    readinessHistory?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
@@ -16286,6 +16340,9 @@ export namespace Prisma {
     timeAvailable?: StringNullableFilter<"Profile"> | string | null
     currentSkills?: JsonFilter<"Profile">
     onboardingCompleted?: BoolFilter<"Profile"> | boolean
+    careerProfile?: JsonNullableFilter<"Profile">
+    dsaProblems?: JsonNullableFilter<"Profile">
+    readinessHistory?: JsonNullableFilter<"Profile">
     createdAt?: DateTimeFilter<"Profile"> | Date | string
     updatedAt?: DateTimeFilter<"Profile"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
@@ -16310,6 +16367,9 @@ export namespace Prisma {
     timeAvailable?: SortOrderInput | SortOrder
     currentSkills?: SortOrder
     onboardingCompleted?: SortOrder
+    careerProfile?: SortOrderInput | SortOrder
+    dsaProblems?: SortOrderInput | SortOrder
+    readinessHistory?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: ProfileCountOrderByAggregateInput
@@ -16341,6 +16401,9 @@ export namespace Prisma {
     timeAvailable?: StringNullableWithAggregatesFilter<"Profile"> | string | null
     currentSkills?: JsonWithAggregatesFilter<"Profile">
     onboardingCompleted?: BoolWithAggregatesFilter<"Profile"> | boolean
+    careerProfile?: JsonNullableWithAggregatesFilter<"Profile">
+    dsaProblems?: JsonNullableWithAggregatesFilter<"Profile">
+    readinessHistory?: JsonNullableWithAggregatesFilter<"Profile">
     createdAt?: DateTimeWithAggregatesFilter<"Profile"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Profile"> | Date | string
   }
@@ -16542,6 +16605,7 @@ export namespace Prisma {
     priorityFlag?: BoolFilter<"Application"> | boolean
     location?: StringNullableFilter<"Application"> | string | null
     appliedDate?: DateTimeNullableFilter<"Application"> | Date | string | null
+    meta?: JsonNullableFilter<"Application">
     createdAt?: DateTimeFilter<"Application"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
   }
@@ -16555,6 +16619,7 @@ export namespace Prisma {
     priorityFlag?: SortOrder
     location?: SortOrderInput | SortOrder
     appliedDate?: SortOrderInput | SortOrder
+    meta?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     user?: UserOrderByWithRelationInput
   }
@@ -16571,6 +16636,7 @@ export namespace Prisma {
     priorityFlag?: BoolFilter<"Application"> | boolean
     location?: StringNullableFilter<"Application"> | string | null
     appliedDate?: DateTimeNullableFilter<"Application"> | Date | string | null
+    meta?: JsonNullableFilter<"Application">
     createdAt?: DateTimeFilter<"Application"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
   }, "id">
@@ -16584,6 +16650,7 @@ export namespace Prisma {
     priorityFlag?: SortOrder
     location?: SortOrderInput | SortOrder
     appliedDate?: SortOrderInput | SortOrder
+    meta?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     _count?: ApplicationCountOrderByAggregateInput
     _max?: ApplicationMaxOrderByAggregateInput
@@ -16602,6 +16669,7 @@ export namespace Prisma {
     priorityFlag?: BoolWithAggregatesFilter<"Application"> | boolean
     location?: StringNullableWithAggregatesFilter<"Application"> | string | null
     appliedDate?: DateTimeNullableWithAggregatesFilter<"Application"> | Date | string | null
+    meta?: JsonNullableWithAggregatesFilter<"Application">
     createdAt?: DateTimeWithAggregatesFilter<"Application"> | Date | string
   }
 
@@ -17163,6 +17231,9 @@ export namespace Prisma {
     timeAvailable?: string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutProfileInput
@@ -17187,6 +17258,9 @@ export namespace Prisma {
     timeAvailable?: string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -17209,6 +17283,9 @@ export namespace Prisma {
     timeAvailable?: NullableStringFieldUpdateOperationsInput | string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: BoolFieldUpdateOperationsInput | boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutProfileNestedInput
@@ -17233,6 +17310,9 @@ export namespace Prisma {
     timeAvailable?: NullableStringFieldUpdateOperationsInput | string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: BoolFieldUpdateOperationsInput | boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -17256,6 +17336,9 @@ export namespace Prisma {
     timeAvailable?: string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -17278,6 +17361,9 @@ export namespace Prisma {
     timeAvailable?: NullableStringFieldUpdateOperationsInput | string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: BoolFieldUpdateOperationsInput | boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -17301,6 +17387,9 @@ export namespace Prisma {
     timeAvailable?: NullableStringFieldUpdateOperationsInput | string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: BoolFieldUpdateOperationsInput | boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -17500,6 +17589,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: string | null
     appliedDate?: Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     user: UserCreateNestedOneWithoutApplicationsInput
   }
@@ -17513,6 +17603,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: string | null
     appliedDate?: Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
   }
 
@@ -17524,6 +17615,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutApplicationsNestedInput
   }
@@ -17537,6 +17629,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -17549,6 +17642,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: string | null
     appliedDate?: Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
   }
 
@@ -17560,6 +17654,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -17572,6 +17667,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -18267,6 +18363,29 @@ export namespace Prisma {
     equals?: boolean | BooleanFieldRefInput<$PrismaModel>
     not?: NestedBoolFilter<$PrismaModel> | boolean
   }
+  export type JsonNullableFilter<$PrismaModel = never> = 
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type UserScalarRelationFilter = {
     is?: UserWhereInput
@@ -18297,6 +18416,9 @@ export namespace Prisma {
     timeAvailable?: SortOrder
     currentSkills?: SortOrder
     onboardingCompleted?: SortOrder
+    careerProfile?: SortOrder
+    dsaProblems?: SortOrder
+    readinessHistory?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -18429,6 +18551,32 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedBoolFilter<$PrismaModel>
     _max?: NestedBoolFilter<$PrismaModel>
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> = 
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type ResumeVersionListRelationFilter = {
@@ -18574,6 +18722,7 @@ export namespace Prisma {
     priorityFlag?: SortOrder
     location?: SortOrder
     appliedDate?: SortOrder
+    meta?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -19763,6 +19912,29 @@ export namespace Prisma {
     _min?: NestedBoolFilter<$PrismaModel>
     _max?: NestedBoolFilter<$PrismaModel>
   }
+  export type NestedJsonNullableFilter<$PrismaModel = never> = 
+    | PatchUndefined<
+        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
@@ -19834,6 +20006,9 @@ export namespace Prisma {
     timeAvailable?: string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -19856,6 +20031,9 @@ export namespace Prisma {
     timeAvailable?: string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -19897,6 +20075,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: string | null
     appliedDate?: Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
   }
 
@@ -19908,6 +20087,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: string | null
     appliedDate?: Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
   }
 
@@ -20090,6 +20270,9 @@ export namespace Prisma {
     timeAvailable?: NullableStringFieldUpdateOperationsInput | string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: BoolFieldUpdateOperationsInput | boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -20112,6 +20295,9 @@ export namespace Prisma {
     timeAvailable?: NullableStringFieldUpdateOperationsInput | string | null
     currentSkills?: JsonNullValueInput | InputJsonValue
     onboardingCompleted?: BoolFieldUpdateOperationsInput | boolean
+    careerProfile?: NullableJsonNullValueInput | InputJsonValue
+    dsaProblems?: NullableJsonNullValueInput | InputJsonValue
+    readinessHistory?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -20170,6 +20356,7 @@ export namespace Prisma {
     priorityFlag?: BoolFilter<"Application"> | boolean
     location?: StringNullableFilter<"Application"> | string | null
     appliedDate?: DateTimeNullableFilter<"Application"> | Date | string | null
+    meta?: JsonNullableFilter<"Application">
     createdAt?: DateTimeFilter<"Application"> | Date | string
   }
 
@@ -21247,6 +21434,7 @@ export namespace Prisma {
     priorityFlag?: boolean
     location?: string | null
     appliedDate?: Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
   }
 
@@ -21326,6 +21514,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -21337,6 +21526,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -21348,6 +21538,7 @@ export namespace Prisma {
     priorityFlag?: BoolFieldUpdateOperationsInput | boolean
     location?: NullableStringFieldUpdateOperationsInput | string | null
     appliedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    meta?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 

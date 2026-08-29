@@ -233,7 +233,7 @@ router.post("/resume/apply-fix", requireAuth, async (req: AuthenticatedRequest, 
 
 router.post("/resume-analyze", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const { resumeText, targetRole } = req.body;
+  const { resumeText, targetRole, targetJd } = req.body;
   if (!resumeText) {
     return res.status(400).json({ error: "Resume text is empty" });
   }
@@ -249,13 +249,14 @@ router.post("/resume-analyze", requireAuth, async (req: AuthenticatedRequest, re
 
   try {
     const ai = getGemini();
-    const prompt = `Analyze this resume content against the requirements for a "${role}" role. 
+    const prompt = `Analyze this resume content against the requirements for a "${role}" role${targetJd ? ` and the specific target Job Description provided below` : ''}. 
     Provide an ATS Score (0-100), key missing keywords/tech, formatting issues, and expert advice (specifically highlighting visual and quantify targets like adding Redis caching or layout fixes).
     
     Resume Content:
     """
     ${resumeText}
-    """`;
+    """
+    ${targetJd ? `\nTarget Job Description:\n"""\n${targetJd}\n"""` : ''}`;
 
     const response = await generateContentWithFallback(ai, {
       contents: prompt,

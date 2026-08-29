@@ -11,6 +11,8 @@ import { jsPDF } from "jspdf";
 interface ResumePageProps {
   resumeText: string;
   setResumeText: (text: string) => void;
+  targetJd: string;
+  setTargetJd: (text: string) => void;
   handleCustomResumeAnalyze: () => void;
   isAnalyzingResume: boolean;
   analysisResult: ResumeAnalysis | null;
@@ -21,6 +23,8 @@ interface ResumePageProps {
 export default function ResumePage({
   resumeText,
   setResumeText,
+  targetJd,
+  setTargetJd,
   handleCustomResumeAnalyze,
   isAnalyzingResume,
   analysisResult,
@@ -216,6 +220,25 @@ export default function ResumePage({
               >
                 Scan & Optimize ATS Compatibility
               </Button>
+            </div>
+          </Card>
+
+          <Card className="p-6 space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+              <h3 className="text-xs uppercase font-extrabold text-white tracking-wider">
+                Target Job Description (JD)
+              </h3>
+            </div>
+            
+            <div className="space-y-3">
+              <Textarea 
+                label="Paste target job listing"
+                value={targetJd}
+                onChange={(e) => setTargetJd(e.target.value)}
+                placeholder="Paste the target job description requirements here to evaluate keyword density..."
+                rows={8}
+                className="text-xs"
+              />
             </div>
           </Card>
         </div>

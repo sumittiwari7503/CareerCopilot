@@ -69,6 +69,23 @@ export interface JobCard {
   status: "Wishlist" | "Applied" | "Assessment" | "Interview" | "Offer";
   priorityFlag: boolean;
   location: string;
+  meta?: {
+    salary?: string;
+    url?: string;
+    interviewDate?: string;
+    followUpDate?: string;
+    notes?: string;
+  };
+}
+
+export interface DsaProblemLog {
+  id: string;
+  name: string;
+  topic: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  timeSpent: number;
+  notes: string;
+  createdAt: string;
 }
 
 export interface DailyMission {

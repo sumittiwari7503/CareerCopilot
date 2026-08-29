@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Briefcase, Plus, Trash2, X, PlusCircle, Calendar, MapPin, Check } from "lucide-react";
 import { JobCard } from "../../types";
 import Card from "../../components/ui/Card";
@@ -30,6 +30,7 @@ interface PipelinePageProps {
   handleAddJobCard: () => void;
   deleteJobCard: (id: string) => void;
   onUpdateJobStatus?: (id: string, nextStatus: "Wishlist" | "Applied" | "Assessment" | "Interview" | "Offer") => void;
+  onUpdateJobCard?: (id: string, updatedFields: Partial<JobCard>) => void;
 }
 
 export default function PipelinePage({
@@ -41,10 +42,63 @@ export default function PipelinePage({
   setNewJob,
   handleAddJobCard,
   deleteJobCard,
-  onUpdateJobStatus
+  onUpdateJobStatus,
+  onUpdateJobCard
 }: PipelinePageProps) {
   // Available Stages
   const stages = ["Wishlist", "Applied", "Assessment", "Interview", "Offer"] as const;
+
+  // Edit Job Modal State
+  const [editingJob, setEditingJob] = useState<JobCard | null>(null);
+
+  const [editTitle, setEditTitle] = useState("");
+  const [editCompany, setEditCompany] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editStatus, setEditStatus] = useState<"Wishlist" | "Applied" | "Assessment" | "Interview" | "Offer">("Wishlist");
+  const [editPriority, setEditPriority] = useState(false);
+  const [editSalary, setEditSalary] = useState("");
+  const [editUrl, setEditUrl] = useState("");
+  const [editInterviewDate, setEditInterviewDate] = useState("");
+  const [editFollowUpDate, setEditFollowUpDate] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  useState(() => {
+    // Empty initializer
+  });
+
+  useEffect(() => {
+    if (editingJob) {
+      setEditTitle(editingJob.title || "");
+      setEditCompany(editingJob.company || "");
+      setEditLocation(editingJob.location || "");
+      setEditStatus(editingJob.status || "Wishlist");
+      setEditPriority(!!editingJob.priorityFlag);
+      setEditSalary(editingJob.meta?.salary || "");
+      setEditUrl(editingJob.meta?.url || "");
+      setEditInterviewDate(editingJob.meta?.interviewDate || "");
+      setEditFollowUpDate(editingJob.meta?.followUpDate || "");
+      setEditNotes(editingJob.meta?.notes || "");
+    }
+  }, [editingJob]);
+
+  const handleSaveEdit = () => {
+    if (!editingJob || !onUpdateJobCard) return;
+    onUpdateJobCard(editingJob.id, {
+      title: editTitle,
+      company: editCompany,
+      location: editLocation,
+      status: editStatus,
+      priorityFlag: editPriority,
+      meta: {
+        salary: editSalary,
+        url: editUrl,
+        interviewDate: editInterviewDate,
+        followUpDate: editFollowUpDate,
+        notes: editNotes
+      }
+    });
+    setEditingJob(null);
+  };
 
   const getJobsByStage = (stage: typeof stages[number]) => {
     return jobs.filter((j) => j.status === stage);
@@ -104,7 +158,11 @@ export default function PipelinePage({
                   </div>
                 ) : (
                   stageJobs.map((j) => (
-                    <Card key={j.id} className="bg-[#111827] border border-white/5 p-4 space-y-3 relative group transition-all hover:border-white/15">
+                    <Card 
+                      key={j.id} 
+                      onClick={() => setEditingJob(j)}
+                      className="bg-[#111827] border border-white/5 p-4 space-y-3 relative group transition-all hover:border-white/15 cursor-pointer"
+                    >
                       
                       {/* Title & priority check */}
                       <div className="flex justify-between items-start gap-1">
@@ -125,7 +183,11 @@ export default function PipelinePage({
                       <div className="flex justify-between items-center pt-2 border-t border-white/5">
                         <select
                           value={j.status}
-                          onChange={(e) => onUpdateJobStatus?.(j.id, e.target.value as any)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onUpdateJobStatus?.(j.id, e.target.value as any);
+                          }}
                           className="bg-transparent border-none text-[9px] font-mono text-gray-400 hover:text-white cursor-pointer focus:outline-none bg-[#111827] border border-white/5 p-1 rounded hover:bg-white/5 transition-all"
                         >
                           {stages.map(st => (
@@ -134,7 +196,10 @@ export default function PipelinePage({
                         </select>
 
                         <button 
-                          onClick={() => deleteJobCard(j.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteJobCard(j.id);
+                          }}
                           className="text-gray-500 hover:text-red-400 transition-colors p-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -160,7 +225,11 @@ export default function PipelinePage({
             </div>
           ) : (
             jobs.map((j) => (
-              <Card key={j.id} className="p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <Card 
+                key={j.id} 
+                onClick={() => setEditingJob(j)}
+                className="p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 cursor-pointer hover:border-white/15 transition-all"
+              >
                 
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-bold text-white text-xs font-mono uppercase shrink-0">
@@ -182,7 +251,11 @@ export default function PipelinePage({
                     <span className="text-[10px] text-gray-500 font-mono">{j.date}</span>
                     <select
                       value={j.status}
-                      onChange={(e) => onUpdateJobStatus?.(j.id, e.target.value as any)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onUpdateJobStatus?.(j.id, e.target.value as any);
+                      }}
                       className="bg-transparent border border-white/10 text-[9px] font-mono text-gray-400 hover:text-white cursor-pointer focus:outline-none bg-[#111827] p-1 rounded hover:bg-white/5 transition-all"
                     >
                       {stages.map(st => (
@@ -192,7 +265,10 @@ export default function PipelinePage({
                   </div>
                   
                   <button 
-                    onClick={() => deleteJobCard(j.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteJobCard(j.id);
+                    }}
                     className="p-1.5 text-gray-500 hover:text-red-400 transition-colors border border-white/5 rounded-lg hover:bg-white/5"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -277,6 +353,136 @@ export default function PipelinePage({
                 className="flex-1 py-2.5 text-xs font-bold"
               >
                 Save Tracking Card
+              </Button>
+            </div>
+
+          </Card>
+        </div>
+      )}
+
+      {/* 5. Edit Job Modal */}
+      {editingJob && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <Card className="max-w-md w-full p-6 space-y-4 relative border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <button 
+              onClick={() => setEditingJob(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Edit Tracking Card</h3>
+              <p className="text-[11px] text-gray-400">Update advanced telemetry stats and details for this opportunity.</p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <Input 
+                label="Job Title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="e.g. Senior Frontend Architect"
+                className="text-xs"
+              />
+
+              <Input 
+                label="Company Name"
+                value={editCompany}
+                onChange={(e) => setEditCompany(e.target.value)}
+                placeholder="e.g. Google"
+                className="text-xs"
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input 
+                  label="Office Location"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g. Mountain View, CA"
+                  className="text-xs"
+                />
+
+                <Select 
+                  label="Application Stage"
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as any)}
+                  options={statusOptions}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input 
+                  label="Expected Salary / Range"
+                  value={editSalary}
+                  onChange={(e) => setEditSalary(e.target.value)}
+                  placeholder="e.g. $140,000 - $160,000"
+                  className="text-xs"
+                />
+
+                <Input 
+                  label="Opportunity URL"
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="e.g. https://google.com/jobs"
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Interview Date</label>
+                  <input 
+                    type="date"
+                    value={editInterviewDate}
+                    onChange={(e) => setEditInterviewDate(e.target.value)}
+                    className="w-full bg-[#111827] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Follow-up Date</label>
+                  <input 
+                    type="date"
+                    value={editFollowUpDate}
+                    onChange={(e) => setEditFollowUpDate(e.target.value)}
+                    className="w-full bg-[#111827] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#2563EB]/50 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Additional Notes</label>
+                <textarea 
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Paste description requirements, feedback, or follow-up details..."
+                  rows={3}
+                  className="w-full bg-[#111827] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#2563EB]/50 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2.5 py-1.5 cursor-pointer select-none" onClick={() => setEditPriority(prev => !prev)}>
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${editPriority ? "bg-red-500 border-red-500" : "border-white/20 hover:border-white/40"}`}>
+                  {editPriority && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}
+                </div>
+                <span className="text-xs text-gray-300 font-bold">Mark as High Priority Goal</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-3 border-t border-white/5">
+              <Button 
+                onClick={() => setEditingJob(null)}
+                variant="outline" 
+                className="flex-1 py-2.5 text-xs font-bold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveEdit}
+                variant="primary" 
+                className="flex-1 py-2.5 text-xs font-bold"
+              >
+                Save Details
               </Button>
             </div>
 

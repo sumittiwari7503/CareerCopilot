@@ -12,7 +12,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 
-import { CareerRoadmap, ResumeAnalysis, JobCard, DailyMission, InterviewSummary, ActionItem, ProjectRecommendation } from "./types";
+import { CareerRoadmap, ResumeAnalysis, JobCard, DailyMission, InterviewSummary, ActionItem, ProjectRecommendation, DsaProblemLog } from "./types";
 import { INITIAL_MISSIONS } from "./constants";
 
 // Subcomponents and Pages
@@ -52,6 +52,7 @@ import {
   deleteApplicationAPI,
   fetchTodayActionAPI,
   completeActionAPI,
+  updateActionTasksAPI,
   fetchProjectRecommendationsAPI,
   generateProjectRecommendationsAPI,
   fetchCareerPlanAPI,
@@ -102,6 +103,7 @@ function MainApp() {
   const [currentSkills, setCurrentSkills] = useState<string[]>([]);
 
   const [resumeText, setResumeText] = useState("");
+  const [targetJd, setTargetJd] = useState("");
   const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<ResumeAnalysis | null>(null);
 
@@ -143,6 +145,7 @@ function MainApp() {
 
   const [todayAction, setTodayAction] = useState<ActionItem | null>(null);
   const [projectRecommendations, setProjectRecommendations] = useState<ProjectRecommendation[]>([]);
+  const [dsaProblems, setDsaProblems] = useState<DsaProblemLog[]>([]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [generatingProjects, setGeneratingProjects] = useState(false);
 
@@ -164,6 +167,16 @@ function MainApp() {
         setHardSolved(profile.hardSolved);
         setStreakDays(profile.streakDays || 0);
         setDailyScore(profile.dailyScore || 0);
+
+        try {
+          if (profile.dsaProblems) {
+            setDsaProblems(typeof profile.dsaProblems === "string" ? JSON.parse(profile.dsaProblems) : profile.dsaProblems);
+          } else {
+            setDsaProblems([]);
+          }
+        } catch (_) {
+          setDsaProblems([]);
+        }
 
         // Hydrate onboarding specs (Phase 9)
         setTargetRole(profile.targetRole || "Software Engineer");
@@ -235,21 +248,43 @@ function MainApp() {
     hydrateData();
   }, [user]);
 
-  // 2. Debounced Profile Persistence (fullName, targetLevel, targetRole)
+  // 2. Debounced Profile Persistence (Syncs all settings/onboarding targets)
   useEffect(() => {
     if (!user || !profileLoaded) return;
 
     const delayDebounce = setTimeout(async () => {
       try {
         const token = await getAccessToken();
-        await updateProfileAPI({ fullName: personalName, targetRole, targetLevel: userLevel }, token);
+        await updateProfileAPI({ 
+          fullName: personalName, 
+          targetRole, 
+          targetLevel: userLevel,
+          targetCompany,
+          companyType,
+          specialization,
+          experienceLevel,
+          targetTimeline: duration,
+          timeAvailable,
+          currentSkills
+        }, token);
       } catch (err) {
         console.error("Error debouncing profile update:", err);
       }
     }, 1000);
 
     return () => clearTimeout(delayDebounce);
-  }, [personalName, userLevel, targetRole]);
+  }, [
+    personalName, 
+    userLevel, 
+    targetRole, 
+    targetCompany, 
+    companyType, 
+    specialization, 
+    experienceLevel, 
+    duration, 
+    timeAvailable,
+    currentSkills
+  ]);
 
   // Live waveform bouncing effect
   useEffect(() => {
@@ -326,7 +361,7 @@ function MainApp() {
       if (data.resumeText) {
         setResumeText(data.resumeText);
         try {
-          const analysis = await analyzeResumeAPI(data.resumeText, data.targetRole, token);
+          const analysis = await analyzeResumeAPI(data.resumeText, data.targetRole, "", token);
           setAnalysisResult(analysis);
         } catch (resumeErr) {
           console.error("Failed to analyze resume during onboarding:", resumeErr);
@@ -411,6 +446,48 @@ function MainApp() {
     }
   };
 
+  const handleToggleActionTask = async (taskIdx: number, completed: boolean) => {
+    if (!todayAction) return;
+
+    try {
+      let tasksList: any[] = [];
+      if (typeof todayAction.tasks === "string") {
+        tasksList = JSON.parse(todayAction.tasks);
+      } else if (Array.isArray(todayAction.tasks)) {
+        tasksList = todayAction.tasks;
+      }
+
+      const updatedTasks = tasksList.map((t: any, idx: number) => {
+        if (idx === taskIdx) {
+          if (typeof t === "string") {
+            return { text: t, completed };
+          }
+          return { ...t, completed };
+        }
+        if (typeof t === "string") {
+          return { text: t, completed: false };
+        }
+        return t;
+      });
+
+      const updatedAction = {
+        ...todayAction,
+        tasks: JSON.stringify(updatedTasks)
+      };
+      setTodayAction(updatedAction);
+
+      const token = await getAccessToken();
+      await updateActionTasksAPI(todayAction.id, updatedTasks, token);
+
+      const allDone = updatedTasks.every((t: any) => t.completed);
+      if (allDone) {
+        await handleCompleteAction(todayAction.id);
+      }
+    } catch (err) {
+      console.error("Failed to toggle subtask check state:", err);
+    }
+  };
+
   const handleGenerateProjects = async () => {
     setGeneratingProjects(true);
     try {
@@ -429,7 +506,7 @@ function MainApp() {
     let success = false;
     try {
       const token = await getAccessToken();
-      const data = await analyzeResumeAPI(resumeText, targetRole, token);
+      const data = await analyzeResumeAPI(resumeText, targetRole, targetJd, token);
       setAnalysisResult(data);
       success = true;
     } catch (err) {
@@ -621,42 +698,80 @@ function MainApp() {
     }
   };
 
-  // Centralized DSA counters update handlers
-  const handleUpdateDsaCount = async (difficulty: "easy" | "medium" | "hard", newCount: number) => {
-    const e = difficulty === "easy" ? newCount : easySolved;
-    const m = difficulty === "medium" ? newCount : mediumSolved;
-    const h = difficulty === "hard" ? newCount : hardSolved;
-
-    let scoreGain = 0;
-    if (difficulty === "easy" && newCount > easySolved) {
-      scoreGain = (newCount - easySolved) * 10;
-      setEasySolved(newCount);
-    } else if (difficulty === "medium" && newCount > mediumSolved) {
-      scoreGain = (newCount - mediumSolved) * 20;
-      setMediumSolved(newCount);
-    } else if (difficulty === "hard" && newCount > hardSolved) {
-      scoreGain = (newCount - hardSolved) * 30;
-      setHardSolved(newCount);
-    } else {
-      // If count was decreased or not changed, just update local state
-      if (difficulty === "easy") setEasySolved(newCount);
-      if (difficulty === "medium") setMediumSolved(newCount);
-      if (difficulty === "hard") setHardSolved(newCount);
+  const handleUpdateJobCard = async (id: string, updatedFields: Partial<JobCard>) => {
+    try {
+      const token = await getAccessToken();
+      const updated = await updateApplicationAPI(id, updatedFields as any, token);
+      setJobs(prev => prev.map(job => job.id === id ? { ...job, ...updated } : job));
+    } catch (err) {
+      console.error("Failed to update application card in database:", err);
     }
+  };
+
+  // Centralized DSA Tracker log handlers
+  const handleLogDsaProblem = async (logData: Omit<DsaProblemLog, "id" | "createdAt">) => {
+    const newLog: DsaProblemLog = {
+      ...logData,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedList = [newLog, ...dsaProblems];
+    setDsaProblems(updatedList);
+
+    // Compute updated counter columns
+    const easyCount = updatedList.filter(p => p.difficulty === "Easy").length;
+    const mediumCount = updatedList.filter(p => p.difficulty === "Medium").length;
+    const hardCount = updatedList.filter(p => p.difficulty === "Hard").length;
+    setEasySolved(easyCount);
+    setMediumSolved(mediumCount);
+    setHardSolved(hardCount);
+
+    // Calculate score gain based on difficulty
+    let scoreGain = 10; // Easy
+    if (logData.difficulty === "Medium") scoreGain = 20;
+    if (logData.difficulty === "Hard") scoreGain = 30;
+
+    const nextScore = dailyScore + scoreGain;
+    const nextStreak = streakDays === 0 ? 1 : streakDays + 1;
+    setDailyScore(nextScore);
+    setStreakDays(nextStreak);
 
     try {
       const token = await getAccessToken();
-      await updateDsaStatsAPI(e, m, h, token);
-
-      if (scoreGain > 0) {
-        const nextScore = dailyScore + scoreGain;
-        const nextStreak = streakDays === 0 ? 1 : streakDays + 1;
-        setDailyScore(nextScore);
-        setStreakDays(nextStreak);
-        await updateProfileAPI({ dailyScore: nextScore, streakDays: nextStreak }, token);
-      }
+      // Update easy/medium/hard aggregate counters
+      await updateDsaStatsAPI(easyCount, mediumCount, hardCount, token);
+      // Update detailed problems log JSON, dailyScore, and streakDays in profile
+      await updateProfileAPI({
+        dsaProblems: JSON.stringify(updatedList),
+        dailyScore: nextScore,
+        streakDays: nextStreak
+      }, token);
     } catch (err) {
-      console.error(`Failed to sync ${difficulty} DSA count to database:`, err);
+      console.error("Failed to save DSA solved log in database:", err);
+    }
+  };
+
+  const handleDeleteDsaProblem = async (id: string) => {
+    const updatedList = dsaProblems.filter(p => p.id !== id);
+    setDsaProblems(updatedList);
+
+    // Compute updated counters
+    const easyCount = updatedList.filter(p => p.difficulty === "Easy").length;
+    const mediumCount = updatedList.filter(p => p.difficulty === "Medium").length;
+    const hardCount = updatedList.filter(p => p.difficulty === "Hard").length;
+    setEasySolved(easyCount);
+    setMediumSolved(mediumCount);
+    setHardSolved(hardCount);
+
+    try {
+      const token = await getAccessToken();
+      await updateDsaStatsAPI(easyCount, mediumCount, hardCount, token);
+      await updateProfileAPI({
+        dsaProblems: JSON.stringify(updatedList)
+      }, token);
+    } catch (err) {
+      console.error("Failed to delete DSA solved log in database:", err);
     }
   };
 
@@ -717,6 +832,7 @@ function MainApp() {
             onNavigate={(tab) => setActiveTab(tab)}
             todayAction={todayAction}
             onCompleteAction={handleCompleteAction}
+            onToggleActionTask={handleToggleActionTask}
             targetCompany={targetCompany}
             companyType={companyType}
             specialization={specialization}
@@ -730,6 +846,9 @@ function MainApp() {
             roadmapProgress={roadmap ? "Active Plan" : "No active plan"}
             jobs={jobs}
             currentSkills={currentSkills}
+            projectRecommendations={projectRecommendations}
+            checkedTasks={checkedTasks}
+            roadmap={roadmap}
           />
         )}
 
@@ -756,6 +875,8 @@ function MainApp() {
           <ResumePage 
             resumeText={resumeText} 
             setResumeText={setResumeText} 
+            targetJd={targetJd}
+            setTargetJd={setTargetJd}
             handleCustomResumeAnalyze={handleCustomResumeAnalyze} 
             isAnalyzingResume={isAnalyzingResume} 
             analysisResult={analysisResult} 
@@ -802,26 +923,15 @@ function MainApp() {
             handleAddJobCard={handleAddJobCard} 
             deleteJobCard={deleteJobCard} 
             onUpdateJobStatus={handleUpdateJobStatus}
+            onUpdateJobCard={handleUpdateJobCard}
           />
         )}
 
         {activeTab === "tracker" && (
           <DsaPage 
-            easySolved={easySolved} 
-            setEasySolved={(prev) => {
-              const nextVal = typeof prev === "function" ? prev(easySolved) : prev;
-              handleUpdateDsaCount("easy", nextVal);
-            }} 
-            mediumSolved={mediumSolved} 
-            setMediumSolved={(prev) => {
-              const nextVal = typeof prev === "function" ? prev(mediumSolved) : prev;
-              handleUpdateDsaCount("medium", nextVal);
-            }} 
-            hardSolved={hardSolved} 
-            setHardSolved={(prev) => {
-              const nextVal = typeof prev === "function" ? prev(hardSolved) : prev;
-              handleUpdateDsaCount("hard", nextVal);
-            }} 
+            dsaProblems={dsaProblems}
+            onLogDsaProblem={handleLogDsaProblem}
+            onDeleteDsaProblem={handleDeleteDsaProblem}
           />
         )}
 

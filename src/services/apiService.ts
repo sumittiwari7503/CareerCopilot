@@ -39,6 +39,9 @@ export async function updateProfileAPI(
     onboardingCompleted: boolean;
     dailyScore: number;
     streakDays: number;
+    careerProfile: string;
+    dsaProblems: string;
+    readinessHistory: string;
   }>,
   token: string | null
 ) {
@@ -94,7 +97,7 @@ export async function fetchApplicationsAPI(token: string | null): Promise<JobCar
 }
 
 export async function createApplicationAPI(
-  app: { title: string; company: string; status: string; priorityFlag: boolean; location: string }, 
+  app: { title: string; company: string; status: string; priorityFlag: boolean; location: string; meta?: any }, 
   token: string | null
 ): Promise<JobCard> {
   const res = await fetch("/api/applications", {
@@ -110,7 +113,7 @@ export async function createApplicationAPI(
 
 export async function updateApplicationAPI(
   id: string, 
-  app: Partial<{ title: string; company: string; status: string; priorityFlag: boolean; location: string }>, 
+  app: Partial<{ title: string; company: string; status: string; priorityFlag: boolean; location: string; meta: any }>, 
   token: string | null
 ): Promise<JobCard> {
   const res = await fetch(`/api/applications/${id}`, {
@@ -158,12 +161,13 @@ export async function generateRoadmapAPI(
 export async function analyzeResumeAPI(
   resumeText: string, 
   targetRole: string, 
+  targetJd: string,
   token: string | null
 ): Promise<ResumeAnalysis> {
   const res = await fetch("/api/resume-analyze", {
     method: "POST",
     headers: getHeaders(token),
-    body: JSON.stringify({ resumeText, targetRole })
+    body: JSON.stringify({ resumeText, targetRole, targetJd })
   });
   if (!res.ok) {
     throw new Error(`Failed to analyze resume: ${res.statusText}`);
@@ -323,6 +327,18 @@ export async function applyResumeFixAPI(
   });
   if (!res.ok) {
     throw new Error(`Failed to apply resume fix: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function updateActionTasksAPI(id: string, tasks: any[], token: string | null) {
+  const res = await fetch(`/api/actions/${id}/tasks`, {
+    method: "PUT",
+    headers: getHeaders(token),
+    body: JSON.stringify({ tasks })
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update action tasks: ${res.statusText}`);
   }
   return res.json();
 }

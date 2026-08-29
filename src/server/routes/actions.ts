@@ -33,7 +33,11 @@ router.get("/today", requireAuth, async (req: AuthenticatedRequest, res: Respons
           source: "Profile",
           estimatedMinutes: 5,
           impactText: "Career recommendations personalization ↑",
-          tasks: JSON.stringify(["Go to Settings page", "Set target role (e.g. Frontend Specialist)", "Set target seniority level"])
+          tasks: JSON.stringify([
+            { text: "Go to Settings page", completed: false },
+            { text: "Set target role (e.g. Frontend Specialist)", completed: false },
+            { text: "Set target seniority level", completed: false }
+          ])
         }
       });
       return res.json(onboardingAction);
@@ -62,7 +66,11 @@ router.get("/today", requireAuth, async (req: AuthenticatedRequest, res: Respons
           source: "Resume",
           estimatedMinutes: 10,
           impactText: "ATS screening score generation ↑",
-          tasks: JSON.stringify(["Prepare resume PDF or text", "Go to Prep Planning tab", "Paste text details in ATS Parser"])
+          tasks: JSON.stringify([
+            { text: "Prepare resume PDF or text", completed: false },
+            { text: "Go to Prep Planning tab", completed: false },
+            { text: "Paste text details in ATS Parser", completed: false }
+          ])
         }
       });
       return res.json(uploadResumeAction);
@@ -89,7 +97,11 @@ router.get("/today", requireAuth, async (req: AuthenticatedRequest, res: Respons
           source: "Resume",
           estimatedMinutes: 20,
           impactText: "ATS compatibility score ↑",
-          tasks: JSON.stringify(["Extract target project description", "Draft rewrites adding numerical metrics", "Paste updated version in parser"])
+          tasks: JSON.stringify([
+            { text: "Extract target project description", completed: false },
+            { text: "Draft rewrites adding numerical metrics", completed: false },
+            { text: "Paste updated version in parser", completed: false }
+          ])
         }
       });
       return res.json(resumeAction);
@@ -113,7 +125,11 @@ router.get("/today", requireAuth, async (req: AuthenticatedRequest, res: Respons
           source: "Roadmap",
           estimatedMinutes: 30,
           impactText: "Prep milestone completion ↑",
-          tasks: JSON.stringify(["Go to Prep Planning tab", "Review week tasks guidelines", "Check off at least one task item"])
+          tasks: JSON.stringify([
+            { text: "Go to Prep Planning tab", completed: false },
+            { text: "Review week tasks guidelines", completed: false },
+            { text: "Check off at least one task item", completed: false }
+          ])
         }
       });
       return res.json(milestoneAction);
@@ -129,7 +145,11 @@ router.get("/today", requireAuth, async (req: AuthenticatedRequest, res: Respons
         source: "General",
         estimatedMinutes: 15,
         impactText: "Technical communication fluency ↑",
-        tasks: JSON.stringify(["Go to AI Mock Coach tab", "Initiate a mock screen session", "Evaluate structured feedback ratings"])
+        tasks: JSON.stringify([
+          { text: "Go to AI Mock Coach tab", completed: false },
+          { text: "Initiate a mock screen session", completed: false },
+          { text: "Evaluate structured feedback ratings", completed: false }
+        ])
       }
     });
     return res.json(generalAction);
@@ -167,6 +187,41 @@ router.post("/:id/complete", requireAuth, async (req: AuthenticatedRequest, res:
   } catch (error: any) {
     console.error("Failed to complete action item:", error);
     return res.status(500).json({ error: "Failed to mark action item as completed" });
+  }
+});
+
+// PUT /api/actions/:id/tasks - Updates subtasks checked states
+router.put("/:id/tasks", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { id } = req.params;
+  const { tasks } = req.body;
+
+  try {
+    const action = await prisma.actionItem.findFirst({
+      where: { id, userId }
+    });
+
+    if (!action) {
+      return res.status(404).json({ error: "Action item not found" });
+    }
+
+    let parsedTasks = tasks;
+    if (tasks !== undefined && typeof tasks === "string") {
+      try { parsedTasks = JSON.parse(tasks); } catch (e) { parsedTasks = tasks; }
+    }
+
+    const updated = await prisma.actionItem.update({
+      where: { id },
+      data: {
+        tasks: parsedTasks,
+        updatedAt: new Date()
+      }
+    });
+
+    return res.json(updated);
+  } catch (error: any) {
+    console.error("Failed to update action tasks:", error);
+    return res.status(500).json({ error: "Failed to update checklist tasks" });
   }
 });
 

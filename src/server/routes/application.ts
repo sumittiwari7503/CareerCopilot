@@ -23,13 +23,18 @@ router.get("/applications", requireAuth, async (req: AuthenticatedRequest, res: 
 // POST /api/applications - Save a new job application card
 router.post("/applications", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const { title, company, status, priorityFlag, location } = req.body;
+  const { title, company, status, priorityFlag, location, meta } = req.body;
 
   if (!title || !company) {
     return res.status(400).json({ error: "Job title and company name are required" });
   }
 
   try {
+    let parsedMeta = meta;
+    if (meta !== undefined && typeof meta === "string") {
+      try { parsedMeta = JSON.parse(meta); } catch (e) { parsedMeta = meta; }
+    }
+
     const newJob = await prisma.application.create({
       data: {
         userId,
@@ -37,7 +42,8 @@ router.post("/applications", requireAuth, async (req: AuthenticatedRequest, res:
         company,
         status: status || "Wishlist",
         priorityFlag: !!priorityFlag,
-        location: location || "Remote"
+        location: location || "Remote",
+        meta: parsedMeta || {}
       }
     });
     return res.status(201).json(newJob);
@@ -51,7 +57,7 @@ router.post("/applications", requireAuth, async (req: AuthenticatedRequest, res:
 router.put("/applications/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   const { id } = req.params;
-  const { title, company, status, priorityFlag, location } = req.body;
+  const { title, company, status, priorityFlag, location, meta } = req.body;
 
   try {
     // Check ownership first
@@ -63,6 +69,11 @@ router.put("/applications/:id", requireAuth, async (req: AuthenticatedRequest, r
       return res.status(404).json({ error: "Job application card not found or access forbidden" });
     }
 
+    let parsedMeta = meta;
+    if (meta !== undefined && typeof meta === "string") {
+      try { parsedMeta = JSON.parse(meta); } catch (e) { parsedMeta = meta; }
+    }
+
     const updated = await prisma.application.update({
       where: { id },
       data: {
@@ -70,7 +81,8 @@ router.put("/applications/:id", requireAuth, async (req: AuthenticatedRequest, r
         ...(company !== undefined && { company }),
         ...(status !== undefined && { status }),
         ...(priorityFlag !== undefined && { priorityFlag }),
-        ...(location !== undefined && { location })
+        ...(location !== undefined && { location }),
+        ...(meta !== undefined && { meta: parsedMeta })
       }
     });
 

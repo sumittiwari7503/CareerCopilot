@@ -144,6 +144,9 @@ exports.Prisma.ProfileScalarFieldEnum = {
   timeAvailable: 'timeAvailable',
   currentSkills: 'currentSkills',
   onboardingCompleted: 'onboardingCompleted',
+  careerProfile: 'careerProfile',
+  dsaProblems: 'dsaProblems',
+  readinessHistory: 'readinessHistory',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -183,6 +186,7 @@ exports.Prisma.ApplicationScalarFieldEnum = {
   priorityFlag: 'priorityFlag',
   location: 'location',
   appliedDate: 'appliedDate',
+  meta: 'meta',
   createdAt: 'createdAt'
 };
 
@@ -262,6 +266,11 @@ exports.Prisma.SortOrder = {
 };
 
 exports.Prisma.JsonNullValueInput = {
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
   JsonNull: Prisma.JsonNull
 };
 

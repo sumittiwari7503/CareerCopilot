@@ -15,7 +15,7 @@ import {
   ChevronRight,
   BookOpen
 } from "lucide-react";
-import { ActionItem, JobCard } from "../../types";
+import { ActionItem, JobCard, ProjectRecommendation, CareerRoadmap } from "../../types";
 import { FAQS, TESTIMONIALS } from "../../constants";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -31,6 +31,7 @@ interface DashboardPageProps {
   onNavigate?: (tab: "home" | "roadmap" | "resume" | "coach" | "jobs" | "tracker" | "settings") => void;
   todayAction: ActionItem | null;
   onCompleteAction?: (id: string) => void;
+  onToggleActionTask?: (idx: number, completed: boolean) => void;
   targetCompany: string;
   companyType: string;
   specialization: string;
@@ -44,6 +45,9 @@ interface DashboardPageProps {
   roadmapProgress: string;
   jobs: JobCard[];
   currentSkills: string[];
+  projectRecommendations: ProjectRecommendation[];
+  checkedTasks: Record<string, boolean>;
+  roadmap: CareerRoadmap | null;
 }
 
 export default function DashboardPage({
@@ -56,6 +60,7 @@ export default function DashboardPage({
   onNavigate,
   todayAction,
   onCompleteAction,
+  onToggleActionTask,
   targetCompany,
   companyType,
   specialization,
@@ -68,26 +73,31 @@ export default function DashboardPage({
   interviewScore,
   roadmapProgress,
   jobs,
-  currentSkills
+  currentSkills,
+  projectRecommendations,
+  checkedTasks,
+  roadmap
 }: DashboardPageProps) {
   // Local state for sub-tasks of the active action item
   const [checkedSubtasks, setCheckedSubtasks] = useState<Record<number, boolean>>({});
 
   // Reset checked subtasks when a new action item is loaded
-  useEffect(() => {
-    setCheckedSubtasks({});
-  }, [todayAction?.id]);
-
-  // Parse tasks array from todayAction
-  const getSubtasks = (): string[] => {
+  // Parse tasks array from todayAction (can be strings or {text, completed} objects)
+  const getSubtasks = (): { text: string; completed: boolean }[] => {
     if (!todayAction?.tasks) return [];
     try {
+      let parsed: any = [];
       if (typeof todayAction.tasks === "string") {
-        return JSON.parse(todayAction.tasks);
+        parsed = JSON.parse(todayAction.tasks);
+      } else if (Array.isArray(todayAction.tasks)) {
+        parsed = todayAction.tasks;
       }
-      if (Array.isArray(todayAction.tasks)) {
-        return todayAction.tasks;
-      }
+      return parsed.map((t: any) => {
+        if (typeof t === "string") {
+          return { text: t, completed: false };
+        }
+        return { text: t.text || "", completed: !!t.completed };
+      });
     } catch (e) {
       console.error("Failed to parse action item tasks:", e);
     }
@@ -95,13 +105,13 @@ export default function DashboardPage({
   };
 
   const subtasks = getSubtasks();
-  const allSubtasksChecked = subtasks.length > 0 && subtasks.every((_, idx) => checkedSubtasks[idx]);
+  const allSubtasksChecked = subtasks.length > 0 && subtasks.every(t => t.completed);
 
   const toggleSubtask = (idx: number) => {
-    setCheckedSubtasks(prev => ({
-      ...prev,
-      [idx]: !prev[idx]
-    }));
+    const task = subtasks[idx];
+    if (task && onToggleActionTask) {
+      onToggleActionTask(idx, !task.completed);
+    }
   };
 
   // Determine greeting based on current local hours
@@ -111,6 +121,69 @@ export default function DashboardPage({
     if (hours < 17) return "Good afternoon";
     return "Good evening";
   };
+
+  // Selected metric details modal state
+  const [selectedMetric, setSelectedMetric] = useState<{ title: string; score: number; explanation: string; nextStep: string } | null>(null);
+
+  // 1. Resume subscore
+  const calculatedResumeScore = resumeScore || 30; // base 30% if not scanned
+
+  // 2. Skills subscore matching
+  const targetRoleName = (targetRole || "").toLowerCase();
+  let targetSkillsList = ["Data Structures & Algorithms", "System Design", "Git", "Software Engineering"];
+  if (targetRoleName.includes("frontend")) {
+    targetSkillsList = ["React", "TypeScript", "CSS & Web UI", "System Design"];
+  } else if (targetRoleName.includes("backend")) {
+    targetSkillsList = ["Node.js", "Databases (SQL/NoSQL)", "System Design", "Docker & CI/CD"];
+  } else if (targetRoleName.includes("full stack") || targetRoleName.includes("fullstack")) {
+    targetSkillsList = ["React", "Node.js", "Databases (SQL/NoSQL)", "System Design"];
+  }
+  const matchedSkillsCount = targetSkillsList.filter(ts => 
+    currentSkills.some(cs => cs.toLowerCase().replace(/[^a-z0-9]/g, "") === ts.toLowerCase().replace(/[^a-z0-9]/g, ""))
+  ).length;
+  const calculatedSkillsScore = Math.round((matchedSkillsCount / targetSkillsList.length) * 70) + 30;
+
+  // 3. DSA subscore
+  const totalSolved = easySolved + mediumSolved + hardSolved;
+  const calculatedDsaScore = Math.min(Math.round((totalSolved / 150) * 70) + 30, 100);
+
+  // 4. Projects subscore
+  const completedProjectsCount = projectRecommendations.filter(p => p.status === "Completed").length;
+  const calculatedProjectsScore = projectRecommendations.length > 0 
+    ? (completedProjectsCount > 0 ? 100 : 75) 
+    : 30;
+
+  // 5. Interview subscore
+  const calculatedInterviewScore = interviewScore || 30;
+
+  // 6. Applications subscore
+  const calculatedApplicationsScore = jobs.length > 0 ? Math.min(50 + jobs.length * 10, 100) : 30;
+
+  // 7. Roadmap subscore
+  let checkedCount = Object.keys(checkedTasks || {}).filter(k => checkedTasks[k]).length;
+  let totalTasksCount = 24;
+  if (roadmap && roadmap.months) {
+    let count = 0;
+    roadmap.months.forEach(m => {
+      m.weeks.forEach(w => {
+        count += w.tasks.length;
+      });
+    });
+    if (count > 0) totalTasksCount = count;
+  }
+  const roadmapPercent = roadmap ? Math.min(Math.round((checkedCount / totalTasksCount) * 100), 100) : 0;
+  const calculatedRoadmapScore = Math.round(roadmapPercent * 0.7) + 30;
+
+  // Overall readiness average
+  const overallReadinessScore = Math.round(
+    (calculatedResumeScore + 
+     calculatedSkillsScore + 
+     calculatedDsaScore + 
+     calculatedProjectsScore + 
+     calculatedInterviewScore + 
+     calculatedApplicationsScore + 
+     calculatedRoadmapScore) / 7
+  );
 
   // Dynamic Skill Gap computation
   const getDynamicSkillGaps = () => {
@@ -326,7 +399,7 @@ export default function DashboardPage({
               </h3>
               {todayAction && subtasks.length > 0 && (
                 <span className="text-[10px] font-mono text-gray-400 font-bold">
-                  ({subtasks.filter((_, idx) => checkedSubtasks[idx]).length}/{subtasks.length} Completed)
+                  ({subtasks.filter(t => t.completed).length}/{subtasks.length} Completed)
                 </span>
               )}
             </div>
@@ -339,7 +412,7 @@ export default function DashboardPage({
                 </div>
               ) : (
                 subtasks.map((task, idx) => {
-                  const isChecked = !!checkedSubtasks[idx];
+                  const isChecked = task.completed;
                   return (
                     <div 
                       key={idx} 
@@ -350,7 +423,7 @@ export default function DashboardPage({
                         {isChecked && <Check className="w-2.5 h-2.5 text-slate-900 stroke-[3px]" />}
                       </div>
                       <div className="min-w-0">
-                        <p className={`text-xs font-semibold leading-relaxed ${isChecked ? "line-through text-gray-500" : "text-gray-200"}`}>{task}</p>
+                        <p className={`text-xs font-semibold leading-relaxed ${isChecked ? "line-through text-gray-500" : "text-gray-200"}`}>{task.text}</p>
                       </div>
                     </div>
                   );
@@ -484,39 +557,95 @@ export default function DashboardPage({
             </div>
           </Card>
 
-          {/* Scores Overview (Resume & Coach) */}
+          {/* AI Career Readiness index */}
           <Card className="p-6">
             <div className="flex justify-between items-center border-b border-white/5 pb-3">
               <h3 className="text-xs uppercase tracking-wider font-extrabold text-gray-300 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#8b5cf6]" /> Technical Scores
+                <Sparkles className="w-4 h-4 text-[#8b5cf6]" /> AI Career Readiness
               </h3>
+              <Badge variant="info" className="font-mono text-[9px]">{overallReadinessScore}% Index</Badge>
             </div>
 
-            <div className="pt-4 grid grid-cols-2 gap-3">
-              <div className="p-3 bg-white/2 rounded-xl border border-white/5 text-center space-y-1">
-                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider block">Resume ATS</span>
-                <span className={`text-base font-mono font-bold block ${resumeScore && resumeScore >= 80 ? "text-[#10B981]" : resumeScore && resumeScore >= 60 ? "text-yellow-400" : "text-gray-400"}`}>
-                  {resumeScore ? `${resumeScore}%` : "Not Scanned"}
-                </span>
-                <button 
-                  onClick={() => onNavigate?.("resume")}
-                  className="text-[8.5px] text-[#60a5fa] hover:underline uppercase block mx-auto pt-1 font-mono font-bold"
-                >
-                  Scan Resume
-                </button>
+            <div className="pt-4 space-y-3">
+              <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-[#8b5cf6]/10 to-[#2563EB]/10 rounded-xl border border-[#8b5cf6]/20">
+                <span className="text-[11px] text-gray-200 font-bold">Overall Readiness Score</span>
+                <span className="font-mono text-base font-extrabold text-white">{overallReadinessScore}%</span>
               </div>
 
-              <div className="p-3 bg-white/2 rounded-xl border border-white/5 text-center space-y-1">
-                <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider block">Mock Coach</span>
-                <span className={`text-base font-mono font-bold block ${interviewScore ? "text-[#8b5cf6]" : "text-gray-400"}`}>
-                  {interviewScore ? `${interviewScore}%` : "No Practice"}
-                </span>
-                <button 
-                  onClick={() => onNavigate?.("coach")}
-                  className="text-[8.5px] text-[#60a5fa] hover:underline uppercase block mx-auto pt-1 font-mono font-bold"
-                >
-                  Practice now
-                </button>
+              <div className="space-y-2.5">
+                {[
+                  { 
+                    name: "Resume Quality", 
+                    score: calculatedResumeScore, 
+                    tab: "resume",
+                    explanation: resumeScore 
+                      ? `Your parsed resume has an ATS keyword compatibility score of ${resumeScore}%. measurable accomplishments and layout are active.`
+                      : "No resume analysis found. Please upload/paste your resume in the optimizer to scan for ATS gaps.",
+                    nextStep: "Scan or optimize weak resume bullets to improve your score."
+                  },
+                  { 
+                    name: "Target Skills", 
+                    score: calculatedSkillsScore, 
+                    tab: "settings",
+                    explanation: `Matched ${matchedSkillsCount} out of ${targetSkillsList.length} critical skills for target role: ${targetRole}.`,
+                    nextStep: "Go to settings to update your current skills array to close gaps."
+                  },
+                  { 
+                    name: "DSA Benchmark", 
+                    score: calculatedDsaScore, 
+                    tab: "tracker",
+                    explanation: `Completed ${totalSolved} algorithmic challenges relative to the 150 benchmark goal.`,
+                    nextStep: "Practice and log more challenges in the DSA page."
+                  },
+                  { 
+                    name: "Portfolio Projects", 
+                    score: calculatedProjectsScore, 
+                    tab: "roadmap",
+                    explanation: projectRecommendations.length > 0
+                      ? `Generated ${projectRecommendations.length} gaps-closing recommendations, with ${completedProjectsCount} marked completed.`
+                      : "No gap-closing projects recommended. Complete onboarding and resume scan first.",
+                    nextStep: "Build recommended projects matching your specialization skill gaps."
+                  },
+                  { 
+                    name: "Mock Interview", 
+                    score: calculatedInterviewScore, 
+                    tab: "coach",
+                    explanation: interviewScore
+                      ? `Your latest AI mock interview speech and pacing evaluation score is ${interviewScore}%.`
+                      : "No mock coach session completed yet. Evaluate technical and behavioral readiness with the AI.",
+                    nextStep: "Start a behavioral or technical mock interview to benchmark your fluency."
+                  },
+                  { 
+                    name: "CRM Funnel", 
+                    score: calculatedApplicationsScore, 
+                    tab: "jobs",
+                    explanation: `Currently tracking ${jobs.length} vacancy opportunities in your job pipeline.`,
+                    nextStep: "Add new target roles to your pipeline CRM to organize applications."
+                  },
+                  { 
+                    name: "Roadmap Progress", 
+                    score: calculatedRoadmapScore, 
+                    tab: "roadmap",
+                    explanation: roadmap
+                      ? `Checked off ${checkedCount} out of ${totalTasksCount} tasks on your target plan.`
+                      : "No active career roadmap generated. Redo onboarding or generate a plan first.",
+                    nextStep: "Follow week items inside the Prep Planner roadmap and check completed items."
+                  }
+                ].map((metric, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setSelectedMetric({ title: metric.name, score: metric.score, explanation: metric.explanation, nextStep: metric.nextStep })}
+                    className="w-full text-left p-2 hover:bg-white/2 rounded-lg border border-transparent hover:border-white/5 transition-all flex items-center justify-between group"
+                  >
+                    <span className="text-[10px] text-gray-400 font-bold group-hover:text-white transition-colors">{metric.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden hidden sm:block">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${metric.score}%` }}></div>
+                      </div>
+                      <span className="font-mono text-[10.5px] font-bold text-gray-300 group-hover:text-emerald-400 transition-colors">{metric.score}%</span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </Card>
@@ -581,6 +710,39 @@ export default function DashboardPage({
         </div>
 
       </div>
+
+      {/* Explanation Modal Overlay */}
+      {selectedMetric && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <Card className="max-w-md w-full p-6 space-y-4 relative border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-[#8b5cf6]/20">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">{selectedMetric.title} Breakdown</h3>
+              <Badge variant="info" className="font-mono text-xs">{selectedMetric.score}%</Badge>
+            </div>
+            
+            <div className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-gray-400 font-mono">Telemetry Findings</span>
+                <p className="text-xs text-gray-200 leading-relaxed">{selectedMetric.explanation}</p>
+              </div>
+              <div className="space-y-1 border-t border-white/5 pt-3">
+                <span className="text-[10px] uppercase font-bold text-[#8b5cf6] font-mono">Recommended Next Action</span>
+                <p className="text-xs text-gray-300 leading-relaxed">{selectedMetric.nextStep}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-white/5">
+              <Button 
+                onClick={() => setSelectedMetric(null)}
+                variant="outline" 
+                className="flex-1 py-2.5 text-xs font-bold"
+              >
+                Close details
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
 
     </div>
   );
