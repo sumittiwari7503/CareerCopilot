@@ -25,7 +25,6 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      navigate("/dashboard");
     } catch (err: any) {
       console.error("Login failed:", err);
       let friendlyError = err.message || "Failed to log in. Please check your credentials.";

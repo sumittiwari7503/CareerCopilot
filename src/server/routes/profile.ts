@@ -12,22 +12,42 @@ async function ensureProfileExists(userId: string, email: string) {
   if (!profile) {
     // Ensure the corresponding User record exists in Postgres (required for foreign key constraints)
     let dbUser = await prisma.user.findUnique({ where: { id: userId } });
-    if (!dbUser) {
+    if (dbUser) {
+      // Sync email if changed in Supabase
+      if (email && dbUser.email !== email) {
+        console.log(`[ensureProfileExists] Syncing email change for User ${userId}: ${dbUser.email} -> ${email}`);
+        dbUser = await prisma.user.update({
+          where: { id: userId },
+          data: { email }
+        });
+      }
+    } else {
       if (email) {
         const existingUserByEmail = await prisma.user.findUnique({ where: { email } });
         if (existingUserByEmail) {
-          console.warn(`[ensureProfileExists] Email conflict: User with email ${email} already exists with ID ${existingUserByEmail.id}. Deleting stale user record to allow new ID registration.`);
-          await prisma.user.delete({ where: { id: existingUserByEmail.id } });
+          console.warn(`[ensureProfileExists] Email conflict: User with email ${email} already exists with ID ${existingUserByEmail.id}. Attempting to update ID to match new Supabase UUID.`);
+          try {
+            await prisma.user.update({
+              where: { email },
+              data: { id: userId }
+            });
+            dbUser = await prisma.user.findUnique({ where: { id: userId } });
+          } catch (updateErr: any) {
+            console.error(`[ensureProfileExists] Failed to update user ID: ${updateErr.message}. Falling back to deleting stale user record.`);
+            await prisma.user.delete({ where: { id: existingUserByEmail.id } });
+          }
         }
       }
 
-      dbUser = await prisma.user.create({
-        data: {
-          id: userId,
-          email: email,
-          passwordHash: "" // Managed by Supabase Auth / Google OAuth
-        }
-      });
+      if (!dbUser) {
+        dbUser = await prisma.user.create({
+          data: {
+            id: userId,
+            email: email,
+            passwordHash: "" // Managed by Supabase Auth / Google OAuth
+          }
+        });
+      }
     }
 
     profile = await prisma.profile.create({

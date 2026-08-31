@@ -131,8 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data && data.session) {
         setSession(data.session);
         setUser(data.session.user);
-      } else if (data && data.user) {
-        setUser(data.user);
       }
       return data;
     } finally {

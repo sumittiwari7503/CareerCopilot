@@ -45,7 +45,6 @@ export default function SignUpPage() {
       } else {
         // Automatically signed in (email confirmation disabled)
         setSuccess(true);
-        navigate("/dashboard");
       }
     } catch (err: any) {
       console.error("Signup failed:", err);
