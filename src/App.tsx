@@ -12,11 +12,10 @@ import {
   AlertTriangle
 } from "lucide-react";
 
-import { CareerRoadmap, ResumeAnalysis, JobCard, DailyMission, InterviewSummary, ActionItem, ProjectRecommendation, DsaProblemLog } from "./types";
-import { INITIAL_MISSIONS } from "./constants";
+import { CareerRoadmap, ResumeAnalysis, JobCard, InterviewSummary, ActionItem, ProjectRecommendation, DsaProblemLog, UserProject } from "./types";
 
 // Subcomponents and Pages
-import Sidebar from "./components/layout/Sidebar";
+import Sidebar, { TabId } from "./components/layout/Sidebar";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import RoadmapPage from "./pages/Roadmap/RoadmapPage";
 import ResumePage from "./pages/Resume/ResumePage";
@@ -25,6 +24,10 @@ import PipelinePage from "./pages/Pipeline/PipelinePage";
 import DsaPage from "./pages/DSA/DsaPage";
 import ProfilePage from "./pages/Profile/ProfilePage";
 import OnboardingPage from "./pages/Onboarding/OnboardingPage";
+import CompanyPrepPage from "./pages/CompanyPrep/CompanyPrepPage";
+import ProjectsPage from "./pages/Projects/ProjectsPage";
+import AnalyticsPage from "./pages/Analytics/AnalyticsPage";
+import ResourcesPage from "./pages/Resources/ResourcesPage";
 
 // Auth Provider
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -73,7 +76,7 @@ import {
 function MainApp() {
   const { user, loading: authLoading, signOut, getAccessToken } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<"home" | "roadmap" | "resume" | "coach" | "jobs" | "tracker" | "settings">("home");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   
   // Hydrated Profile data
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -141,7 +144,8 @@ function MainApp() {
   });
 
   const [pipelineFilter, setPipelineFilter] = useState("All");
-  const [missions, setMissions] = useState<DailyMission[]>(INITIAL_MISSIONS);
+  const [userProjects, setUserProjects] = useState<UserProject[]>([]);
+  const [prepProgress, setPrepProgress] = useState<Record<string, boolean>>({});
 
   const [todayAction, setTodayAction] = useState<ActionItem | null>(null);
   const [projectRecommendations, setProjectRecommendations] = useState<ProjectRecommendation[]>([]);
@@ -191,6 +195,22 @@ function MainApp() {
           setCurrentSkills(JSON.parse(profile.currentSkills || "[]"));
         } catch (_) {
           setCurrentSkills([]);
+        }
+
+        if (profile.careerProfile) {
+          try {
+            const parsed = typeof profile.careerProfile === "string" 
+              ? JSON.parse(profile.careerProfile) 
+              : profile.careerProfile;
+            if (parsed.projects && Array.isArray(parsed.projects)) {
+              setUserProjects(parsed.projects);
+            }
+            if (parsed.prepProgress && typeof parsed.prepProgress === "object") {
+              setPrepProgress(parsed.prepProgress);
+            }
+          } catch (cpErr) {
+            console.error("Error parsing careerProfile:", cpErr);
+          }
         }
 
         setProfileLoaded(true);
@@ -805,10 +825,74 @@ function MainApp() {
     }
   };
 
-  const toggleMission = (id: string) => {
-    setMissions(prev => 
-      prev.map(m => m.id === id ? { ...m, completed: !m.completed } : m)
-    );
+  // Portfolio User Projects handlers
+  const handleAddUserProject = async (newProjData: Omit<UserProject, "id" | "createdAt">) => {
+    const newProj: UserProject = {
+      ...newProjData,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newProj, ...userProjects];
+    setUserProjects(updated);
+    try {
+      const token = await getAccessToken();
+      await updateProfileAPI({
+        careerProfile: JSON.stringify({
+          projects: updated,
+          prepProgress
+        })
+      }, token);
+    } catch (err) {
+      console.error("Failed to add project:", err);
+    }
+  };
+
+  const handleUpdateUserProject = async (id: string, updatedFields: Partial<UserProject>) => {
+    const updated = userProjects.map(p => p.id === id ? { ...p, ...updatedFields } : p);
+    setUserProjects(updated);
+    try {
+      const token = await getAccessToken();
+      await updateProfileAPI({
+        careerProfile: JSON.stringify({
+          projects: updated,
+          prepProgress
+        })
+      }, token);
+    } catch (err) {
+      console.error("Failed to update project:", err);
+    }
+  };
+
+  const handleDeleteUserProject = async (id: string) => {
+    const updated = userProjects.filter(p => p.id !== id);
+    setUserProjects(updated);
+    try {
+      const token = await getAccessToken();
+      await updateProfileAPI({
+        careerProfile: JSON.stringify({
+          projects: updated,
+          prepProgress
+        })
+      }, token);
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+    }
+  };
+
+  const handleTogglePrepItem = async (itemId: string) => {
+    const next = { ...prepProgress, [itemId]: !prepProgress[itemId] };
+    setPrepProgress(next);
+    try {
+      const token = await getAccessToken();
+      await updateProfileAPI({
+        careerProfile: JSON.stringify({
+          projects: userProjects,
+          prepProgress: next
+        })
+      }, token);
+    } catch (err) {
+      console.error("Failed to toggle prep item:", err);
+    }
   };
 
   // Auth/Session views gates
@@ -860,7 +944,7 @@ function MainApp() {
         </header>
 
         {/* Tab view routing mappings */}
-        {activeTab === "home" && (
+        {(activeTab === "overview" || (activeTab as string) === "home") && (
           <DashboardPage 
             personalName={personalName} 
             targetRole={targetRole} 
@@ -868,7 +952,7 @@ function MainApp() {
             dailyScore={dailyScore} 
             expandedFaq={expandedFaq} 
             setExpandedFaq={setExpandedFaq} 
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => setActiveTab(tab as TabId)}
             todayAction={todayAction}
             onCompleteAction={handleCompleteAction}
             onToggleActionTask={handleToggleActionTask}
@@ -910,22 +994,55 @@ function MainApp() {
           />
         )}
 
-        {activeTab === "resume" && (
-          <ResumePage 
-            resumeText={resumeText} 
-            setResumeText={setResumeText} 
-            targetJd={targetJd}
-            setTargetJd={setTargetJd}
-            handleCustomResumeAnalyze={handleCustomResumeAnalyze} 
-            isAnalyzingResume={isAnalyzingResume} 
-            analysisResult={analysisResult} 
-            targetRole={targetRole}
-            applyResumeFix={handleApplyResumeFix}
+        {(activeTab === "dsa" || (activeTab as string) === "tracker") && (
+          <DsaPage 
+            dsaProblems={dsaProblems}
+            onLogDsaProblem={handleLogDsaProblem}
+            onDeleteDsaProblem={handleDeleteDsaProblem}
           />
         )}
 
-        {activeTab === "coach" && (
+        {activeTab === "company-product" && (
+          <CompanyPrepPage 
+            initialTrack="product"
+            prepProgress={prepProgress}
+            onTogglePrepItem={handleTogglePrepItem}
+            onNavigate={(tab) => setActiveTab(tab as TabId)}
+          />
+        )}
+
+        {activeTab === "company-service" && (
+          <CompanyPrepPage 
+            initialTrack="service"
+            prepProgress={prepProgress}
+            onTogglePrepItem={handleTogglePrepItem}
+            onNavigate={(tab) => setActiveTab(tab as TabId)}
+          />
+        )}
+
+        {activeTab === "projects" && (
+          <ProjectsPage 
+            userProjects={userProjects}
+            onAddProject={handleAddUserProject}
+            onUpdateProject={handleUpdateUserProject}
+            onDeleteProject={handleDeleteUserProject}
+            projectRecommendations={projectRecommendations}
+            onGenerateRecommendations={handleGenerateProjects}
+            generatingRecommendations={generatingProjects}
+          />
+        )}
+
+        {(activeTab === "interview-technical" || 
+          activeTab === "interview-hr" || 
+          activeTab === "interview-behavioral" || 
+          activeTab === "interview-mock" || 
+          (activeTab as string) === "coach") && (
           <InterviewPage 
+            initialSubTab={
+              activeTab === "interview-technical" ? "technical" :
+              activeTab === "interview-hr" ? "hr" :
+              activeTab === "interview-behavioral" ? "behavioral" : "mock"
+            }
             interviewActive={interviewActive} 
             setInterviewActive={setInterviewActive} 
             interviewRole={interviewRole} 
@@ -950,6 +1067,20 @@ function MainApp() {
           />
         )}
 
+        {activeTab === "resume" && (
+          <ResumePage 
+            resumeText={resumeText} 
+            setResumeText={setResumeText} 
+            targetJd={targetJd}
+            setTargetJd={setTargetJd}
+            handleCustomResumeAnalyze={handleCustomResumeAnalyze} 
+            isAnalyzingResume={isAnalyzingResume} 
+            analysisResult={analysisResult} 
+            targetRole={targetRole}
+            applyResumeFix={handleApplyResumeFix}
+          />
+        )}
+
         {activeTab === "jobs" && (
           <PipelinePage 
             jobs={jobs} 
@@ -966,12 +1097,26 @@ function MainApp() {
           />
         )}
 
-        {activeTab === "tracker" && (
-          <DsaPage 
+        {activeTab === "analytics" && (
+          <AnalyticsPage 
+            easySolved={easySolved}
+            mediumSolved={mediumSolved}
+            hardSolved={hardSolved}
+            streakDays={streakDays}
+            dailyScore={dailyScore}
             dsaProblems={dsaProblems}
-            onLogDsaProblem={handleLogDsaProblem}
-            onDeleteDsaProblem={handleDeleteDsaProblem}
+            roadmap={roadmap}
+            checkedTasks={checkedTasks}
+            jobs={jobs}
+            resumeScore={analysisResult ? analysisResult.atsScore : null}
+            interviewScore={latestEvaluation ? latestEvaluation.rating : null}
+            targetRole={targetRole}
+            onNavigate={(tab) => setActiveTab(tab as TabId)}
           />
+        )}
+
+        {activeTab === "resources" && (
+          <ResourcesPage />
         )}
 
         {activeTab === "settings" && (
@@ -996,6 +1141,8 @@ function MainApp() {
             setDuration={setDuration}
             timeAvailable={timeAvailable}
             setTimeAvailable={setTimeAvailable}
+            currentSkills={currentSkills}
+            setCurrentSkills={setCurrentSkills}
           />
         )}
 
@@ -1003,33 +1150,33 @@ function MainApp() {
 
       {/* Mobile view bottom navigation bar panel */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#111827] border-t border-white/5 p-3 flex justify-around items-center z-40 text-gray-400">
-        <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center gap-1 ${activeTab === "home" ? "text-[#60a5fa]" : ""}`}>
+        <button onClick={() => setActiveTab("overview")} className={`flex flex-col items-center gap-1 ${activeTab === "overview" ? "text-[#60a5fa]" : ""}`}>
           <Compass className="w-5 h-5" />
           <span className="text-[9px] uppercase tracking-wider font-bold">Home</span>
         </button>
         <button onClick={() => setActiveTab("roadmap")} className={`flex flex-col items-center gap-1 ${activeTab === "roadmap" ? "text-[#60a5fa]" : ""}`}>
           <Map className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wider font-bold">Planning</span>
+          <span className="text-[9px] uppercase tracking-wider font-bold">Plan</span>
+        </button>
+        <button onClick={() => setActiveTab("dsa")} className={`flex flex-col items-center gap-1 ${activeTab === "dsa" ? "text-[#60a5fa]" : ""}`}>
+          <TrendingUp className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wider font-bold">DSA</span>
+        </button>
+        <button onClick={() => setActiveTab("interview-mock")} className={`flex flex-col items-center gap-1 ${activeTab === "interview-mock" ? "text-[#60a5fa]" : ""}`}>
+          <Mic className="w-5 h-5" />
+          <span className="text-[9px] uppercase tracking-wider font-bold">Coach</span>
         </button>
         <button onClick={() => setActiveTab("resume")} className={`flex flex-col items-center gap-1 ${activeTab === "resume" ? "text-[#60a5fa]" : ""}`}>
           <FileText className="w-5 h-5" />
           <span className="text-[9px] uppercase tracking-wider font-bold">Resume</span>
         </button>
-        <button onClick={() => setActiveTab("coach")} className={`flex flex-col items-center gap-1 ${activeTab === "coach" ? "text-[#60a5fa]" : ""}`}>
-          <Mic className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wider font-bold">AI Coach</span>
-        </button>
         <button onClick={() => setActiveTab("jobs")} className={`flex flex-col items-center gap-1 ${activeTab === "jobs" ? "text-[#60a5fa]" : ""}`}>
           <Briefcase className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wider font-bold">Pipeline</span>
-        </button>
-        <button onClick={() => setActiveTab("tracker")} className={`flex flex-col items-center gap-1 ${activeTab === "tracker" ? "text-[#60a5fa]" : ""}`}>
-          <TrendingUp className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wider font-bold">DSA</span>
+          <span className="text-[9px] uppercase tracking-wider font-bold">Jobs</span>
         </button>
         <button onClick={() => setActiveTab("settings")} className={`flex flex-col items-center gap-1 ${activeTab === "settings" ? "text-[#60a5fa]" : ""}`}>
           <Settings className="w-5 h-5" />
-          <span className="text-[9px] uppercase tracking-wider font-bold">Settings</span>
+          <span className="text-[9px] uppercase tracking-wider font-bold">Profile</span>
         </button>
       </nav>
 

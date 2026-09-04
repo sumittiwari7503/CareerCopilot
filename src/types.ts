@@ -60,13 +60,25 @@ export interface InterviewSummary {
   improvements: string[];
 }
 
+export type JobStage =
+  | "Saved"
+  | "Applied"
+  | "Online Assessment"
+  | "Technical Interview"
+  | "HR"
+  | "Offer"
+  | "Rejected"
+  | "Wishlist"
+  | "Assessment"
+  | "Interview";
+
 export interface JobCard {
   id: string;
   title: string;
   company: string;
   logo: string;
   date: string;
-  status: "Wishlist" | "Applied" | "Assessment" | "Interview" | "Offer";
+  status: JobStage;
   priorityFlag: boolean;
   location: string;
   meta?: {
@@ -86,6 +98,20 @@ export interface DsaProblemLog {
   timeSpent: number;
   notes: string;
   createdAt: string;
+}
+
+export interface DsaProblemItem {
+  id: string;
+  name: string;
+  topic: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  timeComplexity: string;
+  spaceComplexity: string;
+  explanation: string;
+  solutionSnippet: string;
+  link?: string;
+  status: "Not Started" | "In Progress" | "Solved";
+  notes?: string;
 }
 
 export interface DailyMission {
@@ -121,4 +147,81 @@ export interface ProjectRecommendation {
   sourceGap: string;
   status: string;
   createdAt: string;
+}
+
+export interface UserProject {
+  id: string;
+  title: string;
+  description: string;
+  techStack: string[];
+  githubUrl?: string;
+  liveUrl?: string;
+  status: "Planned" | "In Progress" | "Completed";
+  skillsDemonstrated: string[];
+  resumeRelevance: string;
+  createdAt: string;
+}
+
+export interface CategorizedSkills {
+  languages: string[];
+  frameworks: string[];
+  databases: string[];
+  cloud: string[];
+  devops: string[];
+  tools: string[];
+  other: string[];
+}
+
+export interface ExtendedCareerProfile {
+  education?: string;
+  degree?: string;
+  graduationYear?: string;
+  location?: string;
+  expectedSalary?: string;
+  preferredLocation?: string;
+  workPreference?: "Remote" | "Hybrid" | "On-site";
+  categorizedSkills?: CategorizedSkills;
+  preferences?: {
+    companyTypes?: string[];
+    timelineMonths?: number;
+    dailyHours?: string;
+  };
+  portfolioLinks?: {
+    github?: string;
+    linkedin?: string;
+    website?: string;
+  };
+  projects?: UserProject[];
+  dsaItems?: Record<string, { status: "Not Started" | "In Progress" | "Solved"; notes?: string }>;
+}
+
+export interface ResourceItem {
+  id: string;
+  title: string;
+  category: "DSA" | "Development" | "CS Fundamentals" | "Interview" | "Resume" | "Company Prep";
+  description: string;
+  url: string;
+  source: string;
+  tags: string[];
+}
+
+export interface InterviewQuestionItem {
+  q: string;
+  a: string;
+  keyPoints: string[];
+  category?: string;
+  starGuide?: {
+    situation: string;
+    task: string;
+    action: string;
+    result: string;
+  };
+}
+
+export interface InterviewTopicGuide {
+  id: string;
+  title: string;
+  category: "Technical" | "HR" | "Behavioral";
+  description: string;
+  questions: InterviewQuestionItem[];
 }
