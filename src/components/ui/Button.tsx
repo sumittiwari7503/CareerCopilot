@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive" | "danger";
   loading?: boolean;
   icon?: React.ReactNode;
   children?: React.ReactNode;
@@ -23,14 +23,15 @@ export default function Button({
   type = "button",
   ...props
 }: ButtonProps) {
-  const baseStyle = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-[#2563EB]/40 focus:ring-offset-2 focus:ring-offset-[#0b0f19] disabled:opacity-50 disabled:cursor-not-allowed select-none";
+  const baseStyle = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-normal transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2 focus:ring-offset-[#0b0f19] disabled:opacity-50 disabled:cursor-not-allowed select-none";
   
   const variants = {
-    primary: "bg-[#2563EB] hover:bg-[#3b82f6] text-white hover:scale-[1.01] active:scale-95",
-    secondary: "bg-[#4F46E5] hover:bg-[#6366f1] text-white hover:scale-[1.01] active:scale-95",
-    outline: "bg-transparent border border-white/10 hover:border-white/20 text-white hover:bg-white/5",
+    primary: "bg-blue-600 hover:bg-blue-500 text-white shadow-sm",
+    secondary: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm",
+    outline: "bg-transparent border border-white/10 hover:border-white/20 text-gray-200 hover:bg-white/5",
     ghost: "bg-transparent text-gray-400 hover:text-white hover:bg-white/5",
-    destructive: "bg-red-600 hover:bg-red-500 text-white hover:scale-[1.01] active:scale-95"
+    destructive: "bg-red-600 hover:bg-red-500 text-white shadow-sm",
+    danger: "bg-red-600 hover:bg-red-500 text-white shadow-sm"
   };
 
   const currentVariant = variants[variant];

@@ -13,10 +13,10 @@ export default function Badge({
   className = "",
   ...props
 }: BadgeProps) {
-  const baseStyle = "inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border font-mono select-none";
+  const baseStyle = "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border select-none";
 
   const variants = {
-    default: "bg-white/5 border-white/10 text-gray-300",
+    default: "bg-slate-800/60 border-slate-700/60 text-slate-300",
     success: "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
     warning: "bg-amber-500/10 border-amber-500/25 text-amber-400",
     error: "bg-red-500/10 border-red-500/25 text-red-400",

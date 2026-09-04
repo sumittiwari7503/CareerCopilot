@@ -15,13 +15,13 @@ export default function Card({
   onClick,
   ...props
 }: CardProps) {
-  const baseStyle = "rounded-2xl border border-white/5 bg-[#111827] transition-all duration-200";
+  const baseStyle = "rounded-2xl border border-white/8 bg-[#111827] transition-colors duration-150";
   
   const variants = {
-    default: "p-5",
-    elevated: "p-6 bg-[#1f2937]/50 border-white/10 shadow-xl",
-    compact: "p-3 text-xs rounded-xl",
-    interactive: "p-5 hover:border-white/10 cursor-pointer hover:bg-white/2 hover:scale-[1.005]"
+    default: "p-5 md:p-6",
+    elevated: "p-5 md:p-6 bg-[#161f33] border-white/10 shadow-lg",
+    compact: "p-3.5 text-xs rounded-xl",
+    interactive: "p-5 md:p-6 hover:border-white/15 cursor-pointer hover:bg-white/2"
   };
 
   const currentVariant = variants[variant];

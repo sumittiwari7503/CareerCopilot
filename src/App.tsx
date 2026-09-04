@@ -927,7 +927,7 @@ function MainApp() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         userName={personalName} 
-        userLevel={userLevel} 
+        targetRole={targetRole}
         avatar={user.user_metadata?.avatar_url || "https://lh3.googleusercontent.com/aida-public/AB6AXuBg8bfg2rEfTRME6dzaMDMzwplwTyDYxg4I2Yl2T37nIAzA07DybYYGPiUcNCo7Vq06GZu4p3fJ8AAMnnRZQjfwYyQ3MaAOTEdeKalB1RuhSBuWwIFDaWkiw3ifLbtuu8CGI9xnBXiREAdX-qn12noo1s9oQ60R5wyr4bqalVRLvwkm9nKX8y1EphMLHlGRaYWzs7NfrLtNAgPYPI5WXHo_xtU4TvP9sPk55Tw7sgMq4PCONSa1HyzW1sTUYECt5BoNnJeVg7QkNMCh"} 
       />
 
@@ -937,18 +937,26 @@ function MainApp() {
         {/* Desktop header metrics bar */}
         <header className="hidden lg:flex justify-between items-center mb-8 border-b border-white/5 pb-4">
           <div>
-            <h1 className="text-lg font-bold text-white font-sans uppercase tracking-widest">{activeTab}</h1>
-            <span className="text-[10px] text-gray-400 font-mono">Sync State Status: PostgreSQL Persistent SSL enabled</span>
+            <h1 className="text-lg font-bold text-white font-sans tracking-wide capitalize">
+              {activeTab === "company-product" ? "Product-Based Prep" : 
+               activeTab === "company-service" ? "Service-Based Prep" : 
+               activeTab === "interview-technical" ? "Technical Interview Prep" :
+               activeTab === "interview-hr" ? "HR Interview Prep" :
+               activeTab === "interview-behavioral" ? "Behavioral (STAR) Prep" :
+               activeTab === "interview-mock" ? "AI Mock Coach" :
+               activeTab}
+            </h1>
+            <span className="text-xs text-slate-400">Your career data is synced</span>
           </div>
-          <div className="flex gap-4">
-            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-3 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE SECURED SESSION
+          <div className="flex items-center gap-3">
+            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Signed in
             </span>
             <button 
               onClick={() => handleSignOut()}
-              className="flex items-center gap-1.5 px-3.5 py-1 text-xs text-gray-400 hover:text-white font-bold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs text-slate-400 hover:text-white font-medium transition-colors cursor-pointer"
             >
-              <LogOut className="w-4 h-4" /> Exit Setup
+              <LogOut className="w-3.5 h-3.5" /> Sign out
             </button>
           </div>
         </header>
@@ -1009,6 +1017,9 @@ function MainApp() {
             dsaProblems={dsaProblems}
             onLogDsaProblem={handleLogDsaProblem}
             onDeleteDsaProblem={handleDeleteDsaProblem}
+            easySolvedCount={easySolved}
+            mediumSolvedCount={mediumSolved}
+            hardSolvedCount={hardSolved}
           />
         )}
 

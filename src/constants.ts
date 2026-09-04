@@ -298,6 +298,15 @@ export const CANONICAL_DSA_PROBLEMS: DsaProblemItem[] = [
 export const CURATED_RESOURCES: ResourceItem[] = [
   // DSA
   {
+    id: "res-risingbrain",
+    title: "RisingBrain Pattern-Wise & Last Minute 100 DSA Sheets",
+    category: "DSA",
+    description: "Curated 386 pattern-based problems and 106 high-frequency last minute interview questions with LeetCode and video solutions.",
+    url: "https://www.risingbrain.org/sheet",
+    source: "RisingBrain",
+    tags: ["DSA", "Patterns", "High-Frequency", "LeetCode"]
+  },
+  {
     id: "res-1",
     title: "NeetCode 150 Problem Roadmap",
     category: "DSA",
