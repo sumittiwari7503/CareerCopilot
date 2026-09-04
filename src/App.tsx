@@ -411,6 +411,10 @@ function MainApp() {
       setTimeAvailable(profile.timeAvailable);
       setCurrentSkills(data.currentSkills);
 
+      // Transition out of onboarding wizard immediately
+      setOnboardingCompleted(true);
+      setOnboardingLoading(false);
+
       // 2. Scan resume if provided
       if (data.resumeText) {
         setResumeText(data.resumeText);
@@ -427,7 +431,7 @@ function MainApp() {
       try {
         newPlan = await generateCareerPlanAPI(token);
       } catch (planErr) {
-        console.error("Failed to generate career plan via Gemini API, falling back to procedural roadmap:", planErr);
+        console.warn("Generating procedural roadmap fallback:", planErr);
         newPlan = getProceduralRoadmap(data.targetRole, data.targetTimeline || 3, "Beginner");
       }
       if (newPlan) {
@@ -442,8 +446,6 @@ function MainApp() {
       } catch (actionErr) {
         console.error("Failed to load first action item:", actionErr);
       }
-
-      setOnboardingCompleted(true);
     } catch (err: any) {
       console.error("Onboarding submission failed:", err);
       throw err;

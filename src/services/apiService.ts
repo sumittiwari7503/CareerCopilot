@@ -279,14 +279,23 @@ export async function fetchCareerPlanAPI(token: string | null) {
 }
 
 export async function generateCareerPlanAPI(token: string | null) {
-  const res = await fetch("/api/career-plan/generate", {
-    method: "POST",
-    headers: getHeaders(token)
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to generate career plan: ${res.statusText}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch("/api/career-plan/generate", {
+      method: "POST",
+      headers: getHeaders(token),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      throw new Error(`Failed to generate career plan: ${res.statusText}`);
+    }
+    return await res.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
   }
-  return res.json();
 }
 
 export async function updateRoadmapTasksAPI(id: string, checkedTasks: Record<string, boolean>, token: string | null) {
