@@ -423,9 +423,17 @@ function MainApp() {
       }
 
       // 3. Generate and save persistent career plan
-      const newPlan = await generateCareerPlanAPI(token);
-      setRoadmap(newPlan);
-      setCheckedTasks(newPlan.checkedTasks || {});
+      let newPlan: any = null;
+      try {
+        newPlan = await generateCareerPlanAPI(token);
+      } catch (planErr) {
+        console.error("Failed to generate career plan via Gemini API, falling back to procedural roadmap:", planErr);
+        newPlan = getProceduralRoadmap(data.targetRole, data.targetTimeline || 3, "Beginner");
+      }
+      if (newPlan) {
+        setRoadmap(newPlan);
+        setCheckedTasks(newPlan.checkedTasks || {});
+      }
 
       // 4. Fetch initial today's action item
       try {
