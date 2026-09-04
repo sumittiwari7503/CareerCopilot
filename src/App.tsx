@@ -1037,65 +1037,64 @@ function MainApp() {
   );
 }
 
-function LoginGate() {
-  const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
-        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
-        Securing connection to Aether platform...
-      </div>
-    );
-  }
-  return user ? <Navigate to="/dashboard" replace /> : <LoginPage />;
+function LoadingScreen({ message }: { message: string }) {
+  return (
+    <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
+      <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
+      {message}
+    </div>
+  );
 }
 
-function SignUpGate() {
-  const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
-        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
-        Securing connection to Aether platform...
-      </div>
-    );
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { authStatus } = useAuth();
+  if (authStatus === "INITIALIZING") {
+    return <LoadingScreen message="Checking authentication session..." />;
   }
-  return user ? <Navigate to="/dashboard" replace /> : <SignUpPage />;
+  return authStatus !== "UNAUTHENTICATED" ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center text-xs text-gray-400 font-mono">
-        <span className="w-5 h-5 border-2 border-white/20 border-t-[#60a5fa] rounded-full animate-spin mr-2"></span>
-        Securing connection to Aether platform...
-      </div>
-    );
+  const { authStatus } = useAuth();
+  if (authStatus === "INITIALIZING") {
+    return <LoadingScreen message="Securing connection to Aether platform..." />;
   }
+  return authStatus === "UNAUTHENTICATED" ? <Navigate to="/login" replace /> : <>{children}</>;
+}
 
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+function AppRoutes() {
+  const { user } = useAuth();
+
+  return (
+    <Routes>
+      {/* Public Auth Routes */}
+      <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+      <Route path="/signup" element={<PublicOnlyRoute><SignUpPage /></PublicOnlyRoute>} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+      {/* Protected Main Panel Routes - Keyed by user.id for complete account data isolation */}
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <MainApp key={user?.id || "unauthenticated"} />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Fallback to Dashboard */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
 }
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          {/* Public Auth Routes */}
-          <Route path="/login" element={<LoginGate />} />
-          <Route path="/signup" element={<SignUpGate />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
-
-          {/* Protected Main Panel Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
-          
-          {/* Fallback to Dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </AuthProvider>
   );

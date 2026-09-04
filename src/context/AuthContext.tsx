@@ -2,17 +2,26 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "../utils/supabase";
 
+export type AuthStatus = 
+  | "INITIALIZING" 
+  | "UNAUTHENTICATED" 
+  | "AUTHENTICATED" 
+  | "HYDRATING_PROFILE" 
+  | "READY";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  authStatus: AuthStatus;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<any>;
-  signIn: (email: string, password: string) => Promise<any>;
-  signOut: () => Promise<any>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ user: User | null; session: Session | null }>;
+  signIn: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
+  signOut: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
   signInWithGoogle: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  setAuthStatus: (status: AuthStatus) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,58 +29,83 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("INITIALIZING");
 
   const isPlaceholderSupabase = !import.meta.env.VITE_SUPABASE_URL || 
                                 import.meta.env.VITE_SUPABASE_URL.includes("placeholder-project") || 
                                 import.meta.env.VITE_SUPABASE_URL.includes("your-project");
 
   useEffect(() => {
+    let isMounted = true;
+
+    // 1. Local offline mock fallback
     if (isPlaceholderSupabase) {
       const mockSessionStr = localStorage.getItem("mock_session");
       if (mockSessionStr) {
         try {
           const parsed = JSON.parse(mockSessionStr);
-          setSession(parsed.session);
-          setUser(parsed.user);
+          if (isMounted) {
+            setSession(parsed.session);
+            setUser(parsed.user);
+            setAuthStatus("AUTHENTICATED");
+          }
+          return;
         } catch (e) {
           console.error("Failed to parse local session:", e);
         }
       }
-      setLoading(false);
+      if (isMounted) {
+        setSession(null);
+        setUser(null);
+        setAuthStatus("UNAUTHENTICATED");
+      }
       return;
     }
 
-    let isMounted = true;
-
-    // Check initial active session once
-    const checkSession = async () => {
+    // 2. Production Supabase: Single source of truth session resolution
+    async function initializeSession() {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn("[Auth] getSession warning:", error.message);
+        }
+
         if (isMounted) {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
+          const currentSession = data?.session ?? null;
+          if (currentSession && currentSession.user) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+            setAuthStatus("AUTHENTICATED");
+          } else {
+            setSession(null);
+            setUser(null);
+            setAuthStatus("UNAUTHENTICATED");
+          }
         }
       } catch (err) {
-        console.error("Supabase getSession error:", err);
-      } finally {
+        console.error("[Auth] Session initialization error:", err);
         if (isMounted) {
-          setLoading(false);
+          setSession(null);
+          setUser(null);
+          setAuthStatus("UNAUTHENTICATED");
         }
       }
-    };
+    }
 
-    checkSession();
+    initializeSession();
 
-    // Listen to changes in auth state (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      if (isMounted) {
+    // 3. Supabase Auth listener for token refreshes, logins, and logouts
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!isMounted) return;
+
+      if (event === "SIGNED_OUT" || !currentSession) {
+        setSession(null);
+        setUser(null);
+        setAuthStatus("UNAUTHENTICATED");
+      } else if (currentSession && currentSession.user) {
         setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        // Only set loading to false if this is a real user state change event
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-          setLoading(false);
-        }
+        setUser(currentSession.user);
+        setAuthStatus((prev) => (prev === "INITIALIZING" || prev === "UNAUTHENTICATED" ? "AUTHENTICATED" : prev));
       }
     });
 
@@ -79,134 +113,140 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isPlaceholderSupabase]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    setLoading(true);
-    try {
-      if (isPlaceholderSupabase) {
-        const res = await fetch("/api/auth/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, fullName })
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Local registration failed");
-        }
-        const data = await res.json();
-
-        const mockUser = {
-          id: data.session.user.id,
-          email: data.session.user.email,
-          user_metadata: { fullName },
-          aud: "authenticated",
-          role: "authenticated",
-          created_at: new Date().toISOString()
-        } as any;
-
-        const mockSession = {
-          access_token: data.session.access_token,
-          token_type: "bearer",
-          expires_in: 3600,
-          user: mockUser
-        } as any;
-
-        localStorage.setItem("mock_session", JSON.stringify({ session: mockSession, user: mockUser }));
-        setSession(mockSession);
-        setUser(mockUser);
-        return data;
-      }
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { fullName }
-        }
+    if (isPlaceholderSupabase) {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password, fullName: fullName.trim() })
       });
-      if (error) throw error;
-      
-      // Explicitly commit session to state immediately to avoid routing race conditions
-      if (data && data.session) {
-        setSession(data.session);
-        setUser(data.session.user);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Local registration failed");
       }
+      const data = await res.json();
+
+      const mockUser = {
+        id: data.session.user.id,
+        email: data.session.user.email,
+        user_metadata: { fullName },
+        aud: "authenticated",
+        role: "authenticated",
+        created_at: new Date().toISOString()
+      } as any;
+
+      const mockSession = {
+        access_token: data.session.access_token,
+        token_type: "bearer",
+        expires_in: 3600,
+        user: mockUser
+      } as any;
+
+      localStorage.setItem("mock_session", JSON.stringify({ session: mockSession, user: mockUser }));
+      setSession(mockSession);
+      setUser(mockUser);
+      setAuthStatus("AUTHENTICATED");
       return data;
-    } finally {
-      setLoading(false);
     }
+
+    // Direct Supabase sign up
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { fullName: fullName.trim() }
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data.session) {
+      throw new Error("Account created, but no active session was returned. Please ensure 'Confirm email' is disabled in your Supabase Auth dashboard.");
+    }
+
+    // Commit session state immediately
+    setSession(data.session);
+    setUser(data.session.user);
+    setAuthStatus("AUTHENTICATED");
+
+    return data;
   };
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      if (isPlaceholderSupabase) {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Local login failed");
-        }
-        const data = await res.json();
-
-        const mockUser = {
-          id: data.session.user.id,
-          email: data.session.user.email,
-          user_metadata: { fullName: data.session.user.fullName || data.session.user.email },
-          aud: "authenticated",
-          role: "authenticated",
-          created_at: new Date().toISOString()
-        } as any;
-
-        const mockSession = {
-          access_token: data.session.access_token,
-          token_type: "bearer",
-          expires_in: 3600,
-          user: mockUser
-        } as any;
-
-        localStorage.setItem("mock_session", JSON.stringify({ session: mockSession, user: mockUser }));
-        setSession(mockSession);
-        setUser(mockUser);
-        return data;
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+    if (isPlaceholderSupabase) {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password })
       });
-      if (error) throw error;
-
-      // Explicitly commit session to state immediately to avoid routing race conditions
-      if (data && data.session) {
-        setSession(data.session);
-        setUser(data.session.user);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Local login failed");
       }
+      const data = await res.json();
+
+      const mockUser = {
+        id: data.session.user.id,
+        email: data.session.user.email,
+        user_metadata: { fullName: data.session.user.fullName || data.session.user.email },
+        aud: "authenticated",
+        role: "authenticated",
+        created_at: new Date().toISOString()
+      } as any;
+
+      const mockSession = {
+        access_token: data.session.access_token,
+        token_type: "bearer",
+        expires_in: 3600,
+        user: mockUser
+      } as any;
+
+      localStorage.setItem("mock_session", JSON.stringify({ session: mockSession, user: mockUser }));
+      setSession(mockSession);
+      setUser(mockUser);
+      setAuthStatus("AUTHENTICATED");
       return data;
-    } finally {
-      setLoading(false);
     }
+
+    // Direct Supabase sign in
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data.session) {
+      throw new Error("Authentication failed: No active session received.");
+    }
+
+    // Commit session state immediately
+    setSession(data.session);
+    setUser(data.session.user);
+    setAuthStatus("AUTHENTICATED");
+
+    return data;
   };
 
   const signOut = async () => {
-    setLoading(true);
     try {
       if (isPlaceholderSupabase) {
         localStorage.removeItem("mock_session");
-        setSession(null);
-        setUser(null);
-        return;
+      } else {
+        await supabase.auth.signOut();
       }
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setUser(null);
-      setSession(null);
+    } catch (err) {
+      console.warn("[Auth] signOut caught error:", err);
     } finally {
-      setLoading(false);
+      setSession(null);
+      setUser(null);
+      setAuthStatus("UNAUTHENTICATED");
     }
   };
 
@@ -217,77 +257,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(mockSessionStr);
           return parsed.session?.access_token ?? null;
-        } catch (e) {
+        } catch {
           return null;
         }
       }
       return null;
     }
+
+    if (session?.access_token) {
+      return session.access_token;
+    }
+
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     return currentSession?.access_token ?? null;
   };
 
   const signInWithGoogle = async () => {
-    setLoading(true);
-    try {
-      if (isPlaceholderSupabase) {
-        window.location.href = `${window.location.origin}/auth/callback?code=mock-oauth-code`;
-        return;
-      }
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      if (error) throw error;
-    } finally {
-      setLoading(false);
+    if (isPlaceholderSupabase) {
+      window.location.href = `${window.location.origin}/auth/callback?code=mock-oauth-code`;
+      return;
     }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
+    if (error) throw error;
   };
 
   const resetPassword = async (email: string) => {
-    setLoading(true);
-    try {
-      if (isPlaceholderSupabase) {
-        console.log("Mock reset password email sent to:", email);
-        return;
-      }
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
-      if (error) throw error;
-    } finally {
-      setLoading(false);
+    if (isPlaceholderSupabase) {
+      console.log("Mock reset password email sent to:", email);
+      return;
     }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`
+    });
+    if (error) throw error;
   };
 
   const updatePassword = async (password: string) => {
-    setLoading(true);
-    try {
-      if (isPlaceholderSupabase) {
-        console.log("Mock password updated locally");
-        return;
-      }
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
-    } finally {
-      setLoading(false);
+    if (isPlaceholderSupabase) {
+      console.log("Mock password updated locally");
+      return;
     }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       session, 
-      loading, 
+      authStatus,
+      loading: authStatus === "INITIALIZING", 
       signUp, 
       signIn, 
       signOut, 
       getAccessToken, 
       signInWithGoogle, 
       resetPassword, 
-      updatePassword
+      updatePassword,
+      setAuthStatus
     }}>
       {children}
     </AuthContext.Provider>
@@ -301,3 +333,4 @@ export function useAuth() {
   }
   return context;
 }
+

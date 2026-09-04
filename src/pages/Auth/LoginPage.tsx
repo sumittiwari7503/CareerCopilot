@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { parseAuthError } from "../../utils/authError";
 import { Compass, Mail, Lock, AlertCircle, Sparkles, CheckCircle } from "lucide-react";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
@@ -8,7 +9,6 @@ import Input from "../../components/ui/Input";
 
 export default function LoginPage() {
   const { signIn, signInWithGoogle } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError("Please fill in all fields.");
       return;
     }
@@ -24,16 +24,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      await signIn(email.trim(), password);
     } catch (err: any) {
       console.error("Login failed:", err);
-      let friendlyError = err.message || "Failed to log in. Please check your credentials.";
-      if (friendlyError.toLowerCase().includes("email not confirmed") || friendlyError.toLowerCase().includes("email_not_confirmed")) {
-        friendlyError = "Your email address has not been verified yet. Please check your inbox for the activation link.";
-      } else if (friendlyError.toLowerCase().includes("invalid login credentials")) {
-        friendlyError = "Invalid email or password. Please verify your credentials.";
-      }
-      setError(friendlyError);
+      setError(parseAuthError(err));
     } finally {
       setLoading(false);
     }

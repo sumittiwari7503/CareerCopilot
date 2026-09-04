@@ -1,26 +1,24 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Compass, Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
+import { parseAuthError } from "../../utils/authError";
+import { Compass, Mail, Lock, User, AlertCircle } from "lucide-react";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 
 export default function SignUpPage() {
   const { signUp } = useAuth();
-  const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email || !password || !confirmPassword) {
+    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
       setError("Please fill in all fields.");
       return;
     }
@@ -36,61 +34,14 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const data = await signUp(email, password, fullName);
-      
-      // If email confirmation is enabled on Supabase, session will be null
-      if (data && data.user && !data.session) {
-        setEmailConfirmationRequired(true);
-        setSuccess(true);
-      } else {
-        // Automatically signed in (email confirmation disabled)
-        setSuccess(true);
-      }
+      await signUp(email.trim(), password, fullName.trim());
     } catch (err: any) {
       console.error("Signup failed:", err);
-      setError(err.message || "Registration failed. Try a different email.");
+      setError(parseAuthError(err));
     } finally {
       setLoading(false);
     }
   };
-
-  if (success && emailConfirmationRequired) {
-    return (
-      <div className="min-h-screen bg-[#0b0f19] text-gray-200 flex items-center justify-center p-4">
-        <Card variant="elevated" className="w-full max-w-sm border-white/10 shadow-2xl space-y-6 py-6 px-5 text-center">
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#4F46E5] flex items-center justify-center border border-white/15">
-              <CheckCircle className="w-6 h-6 text-emerald-400" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-base font-bold uppercase tracking-wider text-white">
-              Confirm Your Email
-            </h2>
-            <p className="text-[12px] text-gray-300">
-              A verification link has been sent to <strong className="text-white">{email}</strong>.
-            </p>
-            <p className="text-[11px] text-gray-400">
-              Please click the link in the email to verify your account, then sign in to complete onboarding.
-            </p>
-            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10px] text-blue-300 text-left">
-              <strong>Configuration Note:</strong> If you wish to disable this verification step, check the "Confirm email" toggle in your Supabase Auth dashboard settings.
-            </div>
-          </div>
-
-          <div className="border-t border-white/5 pt-6">
-            <Link
-              to="/login"
-              className="block w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] rounded-xl text-xs font-bold text-white uppercase tracking-wider transition-all"
-            >
-              Proceed to Sign In
-            </Link>
-          </div>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-gray-200 flex items-center justify-center p-4">
@@ -125,14 +76,6 @@ export default function SignUpPage() {
           </div>
         )}
 
-        {/* Success Alert */}
-        {success && (
-          <div className="bg-emerald-500/10 border border-emerald-500/25 p-3.5 rounded-xl text-[11.5px] text-emerald-300 flex gap-2.5 items-start">
-            <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
-            <span>Registration successful! Redirecting to login...</span>
-          </div>
-        )}
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input 
@@ -143,7 +86,7 @@ export default function SignUpPage() {
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Alex Rivera"
             icon={<User className="w-3.5 h-3.5 text-gray-500" />}
-            disabled={loading || success}
+            disabled={loading}
           />
 
           <Input 
@@ -154,7 +97,7 @@ export default function SignUpPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@company.com"
             icon={<Mail className="w-3.5 h-3.5 text-gray-500" />}
-            disabled={loading || success}
+            disabled={loading}
           />
 
           <Input 
@@ -165,7 +108,7 @@ export default function SignUpPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             icon={<Lock className="w-3.5 h-3.5 text-gray-500" />}
-            disabled={loading || success}
+            disabled={loading}
           />
 
           <Input 
@@ -176,7 +119,7 @@ export default function SignUpPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="••••••••"
             icon={<Lock className="w-3.5 h-3.5 text-gray-500" />}
-            disabled={loading || success}
+            disabled={loading}
           />
 
           <Button 
@@ -184,7 +127,7 @@ export default function SignUpPage() {
             loading={loading}
             variant="primary"
             className="w-full py-2.5 font-bold uppercase tracking-wider text-xs"
-            disabled={loading || success}
+            disabled={loading}
           >
             Register Account
           </Button>

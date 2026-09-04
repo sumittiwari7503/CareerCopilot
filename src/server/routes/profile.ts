@@ -24,36 +24,32 @@ async function ensureProfileExists(userId: string, email: string) {
     } else {
       if (email) {
         const existingUserByEmail = await prisma.user.findUnique({ where: { email } });
-        if (existingUserByEmail) {
-          console.warn(`[ensureProfileExists] Email conflict: User with email ${email} already exists with ID ${existingUserByEmail.id}. Attempting to update ID to match new Supabase UUID.`);
+        if (existingUserByEmail && existingUserByEmail.id !== userId) {
+          console.warn(`[ensureProfileExists] Email conflict: User with email ${email} already exists with ID ${existingUserByEmail.id}. Archiving stale email to preserve user data without collision.`);
           try {
             await prisma.user.update({
-              where: { email },
-              data: { id: userId }
+              where: { id: existingUserByEmail.id },
+              data: { email: `archived_${existingUserByEmail.id.slice(0, 8)}_${email}` }
             });
-            dbUser = await prisma.user.findUnique({ where: { id: userId } });
-          } catch (updateErr: any) {
-            console.error(`[ensureProfileExists] Failed to update user ID: ${updateErr.message}. Falling back to deleting stale user record.`);
-            await prisma.user.delete({ where: { id: existingUserByEmail.id } });
+          } catch (archiveErr: any) {
+            console.error(`[ensureProfileExists] Stale email archive warning: ${archiveErr.message}`);
           }
         }
       }
 
-      if (!dbUser) {
-        dbUser = await prisma.user.create({
-          data: {
-            id: userId,
-            email: email,
-            passwordHash: "" // Managed by Supabase Auth / Google OAuth
-          }
-        });
-      }
+      dbUser = await prisma.user.create({
+        data: {
+          id: userId,
+          email: email || `user_${userId.slice(0, 8)}@placeholder.local`,
+          passwordHash: "" // Managed by Supabase Auth / Google OAuth
+        }
+      });
     }
 
     profile = await prisma.profile.create({
       data: {
         userId,
-        fullName: email.split("@")[0] || "New User",
+        fullName: email ? (email.split("@")[0] || "New User") : "New User",
         targetRole: "Software Developer",
         targetLevel: "L5",
         streakDays: 0,
@@ -67,7 +63,7 @@ async function ensureProfileExists(userId: string, email: string) {
         experienceLevel: "",
         targetTimeline: 3,
         timeAvailable: "2 hours",
-        currentSkills: "[]",
+        currentSkills: [],
         onboardingCompleted: false
       }
     });
